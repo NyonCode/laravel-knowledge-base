@@ -12,13 +12,31 @@
     morph.
 --}}
 <div
+    data-testid="kb-editor-rich-text"
     wire:ignore
     x-data="{
+        editor: null,
+
         init() {
-            window.kbEditor(this.$refs.surface, {
-                content: @js($this->{$statePath}),
-                onChange: (html) => $wire.set('{{ $statePath }}', html, false),
+            // `$nextTick`, ne rovnou: v `init()` rodiče ještě `$refs` potomků
+            // nejsou naplněné a TipTap by dostal `undefined` místo elementu.
+            this.$nextTick(() => {
+                if (typeof window.kbEditor !== 'function') {
+                    return
+                }
+
+                this.editor = window.kbEditor(this.$refs.surface, {
+                    content: @js($this->{$statePath}),
+                    // `false` = neposílat request; hodnota se odešle až se
+                    // zbytkem formuláře. Request na každý úhoz by z psaní
+                    // udělal čekání.
+                    onChange: (html) => $wire.set('{{ $statePath }}', html, false),
+                })
             })
+        },
+
+        destroy() {
+            this.editor?.destroy()
         },
     }"
     class="rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900"

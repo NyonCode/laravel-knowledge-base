@@ -62,6 +62,18 @@ class ArticleEditor extends Component
      */
     public string $editor = 'markdown';
 
+    /**
+     * Bloky rozbalené pro editaci.
+     *
+     * V databázi je kanonický tvar `['type' => …, 'data' => […]]`, tady je
+     * `data` splácnuté do řádku (`blockData.0.text`). Livewire umí bindovat
+     * na cestu, ne na zanoření skrz JSON řetězec — a jedna hodnota nesmí mít
+     * dvě podoby v úložišti jen proto, aby se dala pohodlně editovat.
+     *
+     * @var array<int, array<string, mixed>>
+     */
+    public array $blockData = [];
+
     /** Why this edit happened — stored on the revision, not on the article. */
     public string $note = '';
 
@@ -91,6 +103,10 @@ class ArticleEditor extends Component
 
             // Follow the article, not the installation default.
             $this->editor = $editors->forFormat($article->format)->name();
+        }
+
+        if ($this->format()->isStructured()) {
+            $this->blockData = self::toEditing($this->body);
         }
     }
 
@@ -123,8 +139,7 @@ class ArticleEditor extends Component
                 'kind' => Cast::string($data['kind']),
                 'status' => Cast::string($data['status']),
                 'visibility' => Cast::string($data['visibility']),
-                'format' => app(EditorRegistry::class)->get($this->editor)?->format()
-                    ?? ContentFormat::Markdown,
+                'format' => $this->format(),
             ],
             auth()->user(),
             $this->note ?: null,
@@ -138,46 +153,122 @@ class ArticleEditor extends Component
 
     // --- Blocks --------------------------------------------------------------
     //
-    // Structure is changed here, on the server, and never by JavaScript
-    // mutating a hidden field: one owner for the array is what keeps the order
-    // on screen and the order in the database from disagreeing.
+    // Strukturu mění server, ne JavaScript nad skrytým polem: jeden vlastník
+    // pole znamená, že pořadí na obrazovce a pořadí v databázi se nemůžou
+    // rozejít — což je porucha, kterou má každý podomácku psaný blokový editor.
 
     public function addBlock(string $type): void
     {
-        $blocks = $this->blocks();
-        $blocks[] = ['type' => $type, 'data' => ['text' => '']];
-
-        $this->body = (string) json_encode(array_values($blocks));
+        $this->blockData[] = ['type' => $type];
     }
 
     public function moveBlock(int $index, int $delta): void
     {
-        $blocks = $this->blocks();
         $target = $index + $delta;
 
-        if (! isset($blocks[$index], $blocks[$target])) {
+        if (! isset($this->blockData[$index], $this->blockData[$target])) {
             return;
         }
 
-        [$blocks[$index], $blocks[$target]] = [$blocks[$target], $blocks[$index]];
-
-        $this->body = (string) json_encode(array_values($blocks));
+        [$this->blockData[$index], $this->blockData[$target]] =
+            [$this->blockData[$target], $this->blockData[$index]];
     }
 
     public function removeBlock(int $index): void
     {
-        $blocks = $this->blocks();
-        unset($blocks[$index]);
+        unset($this->blockData[$index]);
 
-        $this->body = (string) json_encode(array_values($blocks));
+        $this->blockData = array_values($this->blockData);
+    }
+
+    /**
+     * Kanonický tvar → řádky k editaci.
+     *
+     * `steps` se rozpadá na řádky textarey, protože číslování patří renderu:
+     * autor píše kroky pod sebe, ne `1.`, `2.`, `3.`.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    protected static function toEditing(string $json): array
+    {
+        $decoded = json_decode($json, true);
+
+        if (! is_array($decoded)) {
+            return [];
+        }
+
+        $rows = [];
+
+        foreach ($decoded as $block) {
+            if (! is_array($block) || ! is_string($block['type'] ?? null)) {
+                continue;
+            }
+
+            $data = is_array($block['data'] ?? null) ? $block['data'] : [];
+
+            if (isset($data['items']) && is_array($data['items'])) {
+                $data['lines'] = implode("\n", array_map(
+                    static fn (mixed $item): string => is_string($item)
+                        ? $item
+                        : Cast::string(is_array($item) ? ($item['text'] ?? '') : ''),
+                    $data['items']
+                ));
+                unset($data['items']);
+            }
+
+            /** @var array<string, mixed> $row */
+            $row = ['type' => $block['type']] + $data;
+
+            $rows[] = $row;
+        }
+
+        return $rows;
+    }
+
+    /**
+     * Řádky → kanonický tvar.
+     *
+     * @param  array<int, array<string, mixed>>  $rows
+     */
+    protected static function toCanonical(array $rows): string
+    {
+        $blocks = [];
+
+        foreach ($rows as $row) {
+            $type = $row['type'] ?? null;
+
+            if (! is_string($type)) {
+                continue;
+            }
+
+            unset($row['type']);
+
+            if (array_key_exists('lines', $row)) {
+                $row['items'] = array_values(array_filter(
+                    array_map('trim', explode("\n", Cast::string($row['lines']))),
+                    static fn (string $line): bool => $line !== ''
+                ));
+                unset($row['lines']);
+            }
+
+            $blocks[] = ['type' => $type, 'data' => $row];
+        }
+
+        return (string) json_encode($blocks);
     }
 
     /** @return array<int, mixed> */
-    protected function blocks(): array
+    protected static function decode(string $json): array
     {
-        $decoded = json_decode($this->body, true);
+        $decoded = json_decode($json, true);
 
         return is_array($decoded) ? array_values($decoded) : [];
+    }
+
+    protected function format(): ContentFormat
+    {
+        return app(EditorRegistry::class)->get($this->editor)?->format()
+            ?? ContentFormat::Markdown;
     }
 
     /** Say "still true" without editing a word. */
@@ -231,7 +322,9 @@ class ArticleEditor extends Component
                 ? $renderers->render(
                     $driver->format(),
                     $driver->format()->isStructured()
-                        ? $this->blocks()
+                        // Náhled ze živých bloků, ne z uloženého JSONu: jinak
+                        // ukazuje minulost a nikdo mu pak nevěří.
+                        ? self::decode(self::toCanonical($this->blockData))
                         : $this->body
                 )
                 : null,

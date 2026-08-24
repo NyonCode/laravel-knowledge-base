@@ -75,6 +75,27 @@ return [
         'sent' => 'Díky. Právě z tohohle se píše další verze.',
     ],
 
+    'editor' => [
+        'move_up' => 'Nahoru',
+        'move_down' => 'Dolů',
+        'block' => [
+            'heading' => 'Nadpis',
+            'text' => 'Text',
+            'callout' => 'Upozornění',
+            'steps' => 'Kroky',
+            'code' => 'Kód',
+            'image' => 'Obrázek',
+            'language' => 'php, bash, json…',
+            'callout_title' => 'Titulek (volitelný)',
+            'alt' => 'Popis obrázku',
+            'caption' => 'Popisek',
+            'unknown' => 'Blok typu „:type“ — v téhle instalaci pro něj není editor.',
+            'empty' => 'Prázdné. Přidej první blok níž.',
+        ],
+        'link' => 'odkaz',
+        'markdown_hint' => 'Markdown · ⌘B ⌘I ⌘K',
+    ],
+
     'admin' => [
         'category' => 'Kategorie',
         'status' => 'Stav',

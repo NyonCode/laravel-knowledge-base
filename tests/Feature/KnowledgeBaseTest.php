@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Foundation\Auth\User;
 use NyonCode\KnowledgeBase\Enums\ContentFormat;
+use NyonCode\KnowledgeBase\Livewire\Admin\ArticleEditor;
 use NyonCode\KnowledgeBase\Models\Article;
 use NyonCode\KnowledgeBase\Models\Category;
 use NyonCode\KnowledgeBase\Services\CommonMarkRenderer;
@@ -212,4 +213,61 @@ it('shows internal categories to the team', function () {
     $reader = new class extends User {};
 
     expect(kb()->categories($reader)->pluck('name'))->toContain('Interní věci');
+});
+
+it('round-trips blocks between the editing rows and the stored shape', function () {
+    // Editace splácne `data` do řádku, úložiště drží kanonický tvar. Kdyby se
+    // ta konverze rozešla, přišel by autor o obsah tichým způsobem.
+    $editor = new class extends ArticleEditor
+    {
+        /** @param  array<int, array<string, mixed>>  $rows */
+        public static function pack(array $rows): string
+        {
+            return self::toCanonical($rows);
+        }
+
+        /** @return array<int, array<string, mixed>> */
+        public static function unpack(string $json): array
+        {
+            return self::toEditing($json);
+        }
+    };
+
+    $rows = [
+        ['type' => 'heading', 'text' => 'Postup'],
+        ['type' => 'steps', 'lines' => "První\nDruhý\n\nTřetí"],
+    ];
+
+    $stored = json_decode($editor::pack($rows), true);
+
+    expect($stored[0])->toBe(['type' => 'heading', 'data' => ['text' => 'Postup']])
+        // Prázdný řádek není krok.
+        ->and($stored[1]['data']['items'])->toBe(['První', 'Druhý', 'Třetí']);
+
+    expect($editor::unpack($editor::pack($rows))[1]['lines'])
+        ->toBe("První\nDruhý\nTřetí");
+});
+
+it('keeps a block whose type nobody can edit any more', function () {
+    // Bloky přežijí kód, který je uměl. Zahodit je při uložení by byla ztráta
+    // obsahu za běhu nasazení.
+    $editor = new class extends ArticleEditor
+    {
+        /** @return array<int, array<string, mixed>> */
+        public static function unpack(string $json): array
+        {
+            return self::toEditing($json);
+        }
+
+        /** @param  array<int, array<string, mixed>>  $rows */
+        public static function pack(array $rows): string
+        {
+            return self::toCanonical($rows);
+        }
+    };
+
+    $json = json_encode([['type' => 'zmizely-typ', 'data' => ['text' => 'obsah']]]);
+
+    expect(json_decode($editor::pack($editor::unpack($json)), true))
+        ->toBe([['type' => 'zmizely-typ', 'data' => ['text' => 'obsah']]]);
 });

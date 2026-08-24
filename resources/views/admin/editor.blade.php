@@ -45,10 +45,18 @@
                         {!! $rendered !!}
                     </div>
                 @else
-                    {{-- The writing surface belongs to the driver: markdown,
-                         TipTap or blocks, whichever this installation offers
-                         and this article was written in. --}}
-                    @include($driver->view(), ['statePath' => 'body', 'article' => $article])
+                    {{-- Plochu vlastní ovladač: markdown, TipTap nebo bloky,
+                         podle toho, co instalace nabízí a čím byl článek psaný.
+
+                         `wire:key` s názvem ovladače je **nutný**, ne kosmetika:
+                         rich-text plocha má uvnitř `wire:ignore` (jinak by morph
+                         přepsal DOM, který drží ProseMirror, a kurzor by skákal),
+                         jenže pak ji Livewire při přepnutí editoru nevymění a
+                         zůstane viset místo nové plochy. Změněný klíč ten uzel
+                         zahodí celý. --}}
+                    <div wire:key="kb-surface-{{ $driver->name() }}">
+                        @include($driver->view(), ['statePath' => 'body', 'article' => $article])
+                    </div>
                 @endif
                 @error('body') <p class="mt-1 text-sm text-rose-600">{{ $message }}</p> @enderror
             </div>

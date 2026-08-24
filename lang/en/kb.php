@@ -75,6 +75,27 @@ return [
         'sent' => 'Thank you. This is what the next revision gets written from.',
     ],
 
+    'editor' => [
+        'move_up' => 'Move up',
+        'move_down' => 'Move down',
+        'block' => [
+            'heading' => 'Heading',
+            'text' => 'Text',
+            'callout' => 'Callout',
+            'steps' => 'Steps',
+            'code' => 'Code',
+            'image' => 'Image',
+            'language' => 'php, bash, json…',
+            'callout_title' => 'Title (optional)',
+            'alt' => 'Alt text',
+            'caption' => 'Caption',
+            'unknown' => 'Block of type “:type” — no editor for it in this installation.',
+            'empty' => 'Empty. Add the first block below.',
+        ],
+        'link' => 'link',
+        'markdown_hint' => 'Markdown · ⌘B ⌘I ⌘K',
+    ],
+
     'admin' => [
         'category' => 'Category',
         'status' => 'Status',
