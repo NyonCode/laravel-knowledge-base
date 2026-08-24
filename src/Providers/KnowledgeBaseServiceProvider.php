@@ -8,6 +8,7 @@ use Illuminate\Contracts\Foundation\Application;
 use Livewire\Livewire;
 use NyonCode\KnowledgeBase\Contracts\ArticleSearch;
 use NyonCode\KnowledgeBase\Contracts\EditorDriver;
+use NyonCode\KnowledgeBase\Contracts\ImageLibrary;
 use NyonCode\KnowledgeBase\Contracts\KnowledgeAudience;
 use NyonCode\KnowledgeBase\Contracts\MarkdownRenderer;
 use NyonCode\KnowledgeBase\Livewire\Admin\ArticleEditor;
@@ -19,6 +20,7 @@ use NyonCode\KnowledgeBase\Livewire\KnowledgeHome;
 use NyonCode\KnowledgeBase\Livewire\SearchPalette;
 use NyonCode\KnowledgeBase\Services\CommonMarkRenderer;
 use NyonCode\KnowledgeBase\Services\DatabaseArticleSearch;
+use NyonCode\KnowledgeBase\Services\DiskImageLibrary;
 use NyonCode\KnowledgeBase\Services\EditorRegistry;
 use NyonCode\KnowledgeBase\Services\GateKnowledgeAudience;
 use NyonCode\KnowledgeBase\Services\KnowledgeBase;
@@ -56,6 +58,7 @@ final class KnowledgeBaseServiceProvider extends PackageServiceProvider implemen
                 $this->app->singleton(MarkdownRenderer::class, CommonMarkRenderer::class);
                 $this->app->singleton(KnowledgeAudience::class, GateKnowledgeAudience::class);
                 $this->app->singleton(ArticleSearch::class, DatabaseArticleSearch::class);
+                $this->app->singleton(ImageLibrary::class, DiskImageLibrary::class);
 
                 // One renderer per format. Registered last wins, so a host that
                 // binds its own markdown renderer (to run a highlighter, say)

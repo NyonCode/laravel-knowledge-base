@@ -76,6 +76,13 @@ return [
     ],
 
     'editor' => [
+        'image_title' => 'Vložit obrázek',
+        'drop_here' => 'Přetáhni sem obrázek',
+        'or_click' => 'nebo klikni a vyber soubor',
+        'uploading' => 'Nahrává se…',
+        'gallery' => 'Už nahrané',
+        'limits' => ':mimes · do :size MB',
+        'pick_image' => 'Vybrat…',
         'duplicate' => 'Duplikovat',
         'list' => 'seznam',
         'image' => 'obrázek',

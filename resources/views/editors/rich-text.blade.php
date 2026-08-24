@@ -17,6 +17,7 @@
     x-data="{
         editor: null,
         active: {},
+        uploading: false,
 
         init() {
             // `$nextTick`: v `init()` rodiče ještě `$refs` potomků nejsou
@@ -78,19 +79,35 @@
             this.run((chain) => chain.extendMarkRange('link').setLink({ href }))
         },
 
-        image() {
-            const src = window.prompt(@js(__('knowledge-base::kb.editor.image_prompt')), '')
-
+        insertImage(src) {
             if (src) {
                 this.run((chain) => chain.setImage({ src }))
             }
+        },
+
+        /**
+         * Soubor upuštěný přímo na plochu se nahraje bez otevírání výběru.
+         * Přetažení **je** to potvrzení; modálka by tu byla krok navíc.
+         */
+        dropped(event) {
+            const file = event.dataTransfer?.files?.[0]
+
+            if (! file || ! file.type.startsWith('image/')) {
+                return
+            }
+
+            event.preventDefault()
+            this.uploading = true
+
+            $wire.upload('imageUpload', file, () => { this.uploading = false })
         },
 
         destroy() {
             this.editor?.destroy()
         },
     }"
-    class="overflow-hidden rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900"
+    x-on:kb-image-picked.window="insertImage($event.detail.url)"
+    class="relative overflow-hidden rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900"
 >
     <div class="flex flex-wrap items-center gap-1 border-b border-zinc-200 bg-zinc-50 px-2 py-1.5 dark:border-zinc-800 dark:bg-zinc-950">
         @php
@@ -118,7 +135,7 @@
         <span class="mx-1 h-4 w-px bg-zinc-300 dark:bg-zinc-700"></span>
 
         <button type="button" x-on:click="link()" :class="active.link ? '{{ $on }}' : '{{ $off }}'" class="{{ $btn }}">{{ __('knowledge-base::kb.editor.link') }}</button>
-        <button type="button" x-on:click="image()" class="{{ $btn }} {{ $off }}">{{ __('knowledge-base::kb.editor.image') }}</button>
+        <button type="button" x-on:click="$wire.openImagePicker()" class="{{ $btn }} {{ $off }}">{{ __('knowledge-base::kb.editor.image') }}</button>
         <button type="button" x-on:click="run(c => c.insertTable({ rows: 3, cols: 3, withHeaderRow: true }))" class="{{ $btn }} {{ $off }}">{{ __('knowledge-base::kb.editor.table') }}</button>
 
         <span class="ml-auto flex items-center gap-1">
@@ -127,10 +144,15 @@
         </span>
     </div>
 
-    <div wire:ignore>
+    <div wire:ignore x-on:drop="dropped($event)" x-on:dragover.prevent>
         <div
             x-ref="surface"
             class="kb-prose prose prose-zinc min-h-[24rem] max-w-none p-4 focus:outline-none dark:prose-invert"
         ></div>
+    </div>
+
+    <div x-show="uploading" x-cloak
+         class="pointer-events-none absolute inset-x-0 bottom-0 bg-sky-600/90 px-4 py-1.5 text-center text-xs font-medium text-white">
+        {{ __('knowledge-base::kb.editor.uploading') }}
     </div>
 </div>

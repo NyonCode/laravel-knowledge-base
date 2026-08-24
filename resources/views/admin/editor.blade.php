@@ -3,6 +3,8 @@
     apart from each other. See ArticleEditor for why they are never one button.
 --}}
 <div class="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8" x-data>
+    @include('knowledge-base::editors.image-picker')
+
     <form wire:submit="save">
         <div class="flex flex-wrap items-center justify-between gap-3">
             <input

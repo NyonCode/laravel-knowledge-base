@@ -3,6 +3,9 @@
 declare(strict_types=1);
 
 use Illuminate\Foundation\Auth\User;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
+use NyonCode\KnowledgeBase\Contracts\ImageLibrary;
 use NyonCode\KnowledgeBase\Enums\ContentFormat;
 use NyonCode\KnowledgeBase\Livewire\Admin\ArticleEditor;
 use NyonCode\KnowledgeBase\Models\Article;
@@ -310,4 +313,36 @@ it('rewrites rich text through the sanitiser', function () {
     expect($html)->toContain('id="nadpis"')
         ->not->toContain('onclick')
         ->not->toContain('<script');
+});
+
+it('stores an uploaded image and hands back a usable address', function () {
+    Storage::fake('public');
+
+    $url = app(ImageLibrary::class)->store(
+        UploadedFile::fake()->image('schema.png')
+    );
+
+    expect($url)->toContain('/images/')
+        ->and(Storage::disk('public')->files('images'))->toHaveCount(1);
+});
+
+it('lists the newest uploads first in the gallery', function () {
+    Storage::fake('public');
+
+    $library = app(ImageLibrary::class);
+
+    $library->store(UploadedFile::fake()->image('starsi.png'));
+    $library->store(UploadedFile::fake()->image('novejsi.png'));
+
+    // Galerie odpovídá na „ten, co jsem před chvílí nahrál" – pořadí je celý
+    // její smysl, jméno souboru nikomu nic neříká.
+    expect($library->recent())->toHaveCount(2);
+});
+
+it('does not offer files that are not images', function () {
+    Storage::fake('public');
+
+    Storage::disk('public')->put('images/poznamky.txt', 'nic');
+
+    expect(app(ImageLibrary::class)->recent())->toBeEmpty();
 });

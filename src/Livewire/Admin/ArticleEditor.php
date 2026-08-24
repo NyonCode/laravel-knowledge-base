@@ -5,9 +5,12 @@ declare(strict_types=1);
 namespace NyonCode\KnowledgeBase\Livewire\Admin;
 
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Livewire\Component;
+use Livewire\WithFileUploads;
+use NyonCode\KnowledgeBase\Contracts\ImageLibrary;
 use NyonCode\KnowledgeBase\Contracts\KnowledgeAudience;
 use NyonCode\KnowledgeBase\Enums\ArticleKind;
 use NyonCode\KnowledgeBase\Enums\ArticleStatus;
@@ -35,6 +38,8 @@ use NyonCode\KnowledgeBase\Support\Settings;
  */
 class ArticleEditor extends Component
 {
+    use WithFileUploads;
+
     public ?Article $article = null;
 
     public string $title = '';
@@ -78,6 +83,20 @@ class ArticleEditor extends Component
     public string $note = '';
 
     public bool $preview = false;
+
+    /** Otevřený výběr obrázku. */
+    public bool $imagePicker = false;
+
+    /**
+     * Kam obrázek půjde: index bloku, nebo `null` pro TipTap.
+     *
+     * Jeden výběr obsluhuje obě plochy — dvě skoro stejné modálky by se
+     * rozešly při první úpravě jedné z nich.
+     */
+    public ?int $imageTarget = null;
+
+    /** @var mixed dočasně nahraný soubor */
+    public $imageUpload = null;
 
     public function mount(
         ?Article $article,
@@ -149,6 +168,63 @@ class ArticleEditor extends Component
         $this->note = '';
 
         $this->dispatch('kb-article-saved', id: $article->getKey());
+    }
+
+    // --- Obrázky ---------------------------------------------------------------
+
+    public function openImagePicker(?int $index = null): void
+    {
+        $this->imageTarget = $index;
+        $this->imagePicker = true;
+    }
+
+    public function closeImagePicker(): void
+    {
+        $this->reset(['imagePicker', 'imageTarget', 'imageUpload']);
+    }
+
+    /**
+     * Nahraný soubor rovnou uloží a použije.
+     *
+     * Bez potvrzovacího kroku schválně: přetáhnout soubor **je** to potvrzení
+     * a druhé kliknutí by z rychlé věci udělalo formulář.
+     */
+    public function updatedImageUpload(): void
+    {
+        $this->validate([
+            'imageUpload' => [
+                'required',
+                'image',
+                'mimes:'.implode(',', Settings::strings('images.mimes')),
+                'max:'.Settings::int('images.max_kb', 4096),
+            ],
+        ]);
+
+        // Po validaci `image` to soubor je, ale typ vlastnosti je `mixed`
+        // (Livewire tam drží i řetězec z předchozího requestu).
+        if (! $this->imageUpload instanceof UploadedFile) {
+            return;
+        }
+
+        $this->useImage(app(ImageLibrary::class)->store($this->imageUpload));
+    }
+
+    /**
+     * Vloží adresu tam, odkud se výběr otevřel.
+     *
+     * Bloku se zapíše přímo do pole; TipTap DOM nevlastní Livewire (drží ho
+     * ProseMirror pod `wire:ignore`), takže tam jde událost a vložení si
+     * obstará editor sám.
+     */
+    public function useImage(string $url): void
+    {
+        if ($this->imageTarget !== null) {
+            $this->blockData[$this->imageTarget]['src'] = $url;
+        } else {
+            $this->dispatch('kb-image-picked', url: $url);
+        }
+
+        $this->closeImagePicker();
     }
 
     // --- Blocks --------------------------------------------------------------
@@ -332,6 +408,9 @@ class ArticleEditor extends Component
             'statuses' => ArticleStatus::cases(),
             'visibilities' => Visibility::cases(),
             'driver' => $driver,
+            'gallery' => $this->imagePicker
+                ? app(ImageLibrary::class)->recent()
+                : [],
             'editors' => $editors->available(),
             'rendered' => $this->preview
                 ? $renderers->render(

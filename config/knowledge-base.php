@@ -160,6 +160,24 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Images
+    |--------------------------------------------------------------------------
+    |
+    | Where uploads land and what the gallery lists. Bind
+    | NyonCode\KnowledgeBase\Contracts\ImageLibrary to your own media library
+    | if you have one — the shipped implementation is a disk and a directory.
+    |
+    */
+
+    'images' => [
+        'disk' => 'public',
+        'directory' => 'images',
+        'max_kb' => 4096,
+        'mimes' => ['jpg', 'jpeg', 'png', 'gif', 'webp', 'avif'],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Search
     |--------------------------------------------------------------------------
     |

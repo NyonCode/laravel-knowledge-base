@@ -76,6 +76,13 @@ return [
     ],
 
     'editor' => [
+        'image_title' => 'Insert an image',
+        'drop_here' => 'Drop an image here',
+        'or_click' => 'or click to choose a file',
+        'uploading' => 'Uploading…',
+        'gallery' => 'Already uploaded',
+        'limits' => ':mimes · up to :size MB',
+        'pick_image' => 'Choose…',
         'duplicate' => 'Duplicate',
         'list' => 'list',
         'image' => 'image',
