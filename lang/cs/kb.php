@@ -77,9 +77,14 @@ return [
 
     'editor' => [
         'task_list' => 'Zaškrtávací seznam',
+        'subscript' => 'Dolní index',
+        'superscript' => 'Horní index',
+        'clear_format' => 'Vymazat formátování',
+        'horizontal_rule' => 'Vodorovný předěl',
         'align_left' => 'Vlevo',
         'align_center' => 'Na střed',
         'align_right' => 'Vpravo',
+        'align_justify' => 'Do bloku',
         'font_size' => 'Velikost',
         'size_default' => 'Základní',
         'size_small' => 'Menší',

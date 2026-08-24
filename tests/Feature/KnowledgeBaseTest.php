@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Illuminate\Foundation\Auth\User;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use NyonCode\KnowledgeBase\Contracts\ImageLibrary;
 use NyonCode\KnowledgeBase\Enums\ContentFormat;
 use NyonCode\KnowledgeBase\Livewire\Admin\ArticleEditor;
@@ -609,6 +610,37 @@ it('keeps a table with merged cells and a header row', function () {
     expect($html)->toContain('<th colspan="2">')->toContain('<td>a</td>');
 });
 
+it('keeps the widths of columns the author resized', function () {
+    // Roztahovací sloupce nabízí editor, ukládají se do `<col style="width">`
+    // – a zahazoval je vlastní filtr stylů, ne sanitizér. Tabulka se tím po
+    // uložení sama přerovnala a nastavená šířka zmizela beze stopy.
+    $html = app(RendererRegistry::class)->render(
+        ContentFormat::RichText,
+        '<table><colgroup><col style="width: 120px"><col></colgroup>'
+        .'<tbody><tr><td>a</td><td>b</td></tr></tbody></table>'
+    );
+
+    expect($html)->toContain('width: 120px');
+});
+
+it('aligns a heading block and leaves the default one alone', function () {
+    $render = fn (array $data) => app(RendererRegistry::class)
+        ->render(ContentFormat::Blocks, [['type' => 'heading', 'data' => $data]]);
+
+    expect($render(['text' => 'Na střed', 'align' => 'center']))
+        ->toContain('text-align: center')
+        // Zarovnání nesmí připravit nadpis o kotvu, jinak na něj přestane
+        // odkazovat obsah stránky.
+        ->toContain('id="na-stred"')
+        // Vlevo je výchozí – prázdný `style` by jen přebil to, co si stránka
+        // řekne sama.
+        ->and($render(['text' => 'Obyčejný']))->not->toContain('style=')
+        // Hodnota jde z rozbalovacího seznamu, ale do bloku se dá zapsat i
+        // rukou (import, starší obsah), tak se bere jen to, co dává smysl.
+        ->and($render(['text' => 'Podvrh', 'align' => 'fixed; color: red']))
+        ->not->toContain('style=');
+});
+
 it('keeps underline, subscript and superscript', function () {
     $html = app(RendererRegistry::class)->render(
         ContentFormat::RichText,
@@ -636,4 +668,89 @@ it('keeps a task list but never lets the reader tick it', function () {
         // že `disabled` dostala **obě**, ne jen to zaškrtnuté.
         ->and(substr_count($html, '<input'))->toBe(2)
         ->and(substr_count($html, 'disabled="disabled"'))->toBe(2);
+});
+
+it('offers text formatting in a block, not just in an article', function () {
+    $toolbar = fn (bool $compact) => view('knowledge-base::editors._tiptap-toolbar', [
+        'compact' => $compact,
+    ])->render();
+
+    $full = $toolbar(false);
+    $compact = $toolbar(true);
+
+    // Co blok nenahradí vlastním typem, musí jít udělat i uvnitř něj –
+    // vystředěný odstavec je v upozornění stejně běžný jako v článku.
+    foreach (['setTextAlign', 'toggleSubscript', 'toggleSuperscript', 'unsetAllMarks', 'toggleTaskList'] as $command) {
+        expect($compact)->toContain($command);
+    }
+
+    // A co vlastní typ bloku má, se v něm nabízet nemá: nadpis vložený do
+    // textového bloku by se choval jinak než blok Nadpis vedle něj.
+    foreach (['toggleHeading', 'insertTable', 'setHorizontalRule'] as $command) {
+        expect($compact)->not->toContain($command)
+            ->and($full)->toContain($command);
+    }
+});
+
+it('names every editor control in both languages', function (string $locale) {
+    app()->setLocale($locale);
+
+    // Laravel vrátí za nepřeložený klíč jeho samotný, takže chybějící překlad
+    // se pozná podle toho, že se do stránky vypsalo `knowledge-base::kb.…`.
+    // Tohle chytí i klíče skládané za běhu (`align_`.$align), na které by se
+    // hledání v šabloně nechytlo.
+    foreach ([true, false] as $compact) {
+        expect(view('knowledge-base::editors._tiptap-toolbar', ['compact' => $compact])->render())
+            ->not->toContain('knowledge-base::kb.');
+    }
+})->with(['cs', 'en']);
+
+it('saves what the block editor holds, not the body it started with', function () {
+    // `blockData` je editační tvar, `body` ten uložený – a převod mezi nimi
+    // dělal jen náhled. Nový blokový článek proto neprošel validací („tělo
+    // musí být vyplněno“) a u článku přepnutého z markdownu by se uložil
+    // pořád ten původní text.
+    $editor = new class extends ArticleEditor
+    {
+        /** @param  array<int, array<string, mixed>>  $rows  Bloky tak, jak je drží editor. */
+        public function write(array $rows): void
+        {
+            $this->editor = 'blocks';
+            $this->title = 'Blokový článek';
+            $this->slug = 'blokovy-clanek';
+            $this->blockData = $rows;
+
+            $this->save(app(KnowledgeBase::class));
+        }
+    };
+
+    $editor->write([
+        ['type' => 'heading', 'text' => 'Na střed', 'align' => 'center'],
+        ['type' => 'text', 'text' => '<p>Odstavec</p>'],
+    ]);
+
+    expect(Article::query()->firstOrFail()->body_html)
+        ->toContain('text-align: center')
+        ->toContain('Odstavec');
+});
+
+it('refuses a block article with nothing in it', function () {
+    // Bez toho by prošlo `[]` – dva znaky, tedy „vyplněné“ tělo.
+    $editor = new class extends ArticleEditor
+    {
+        public function writeNothing(): void
+        {
+            $this->editor = 'blocks';
+            $this->title = 'Prázdno';
+            $this->slug = 'prazdno';
+            $this->blockData = [];
+
+            $this->save(app(KnowledgeBase::class));
+        }
+    };
+
+    expect(fn () => $editor->writeNothing())
+        ->toThrow(ValidationException::class);
+
+    expect(Article::query()->count())->toBe(0);
 });

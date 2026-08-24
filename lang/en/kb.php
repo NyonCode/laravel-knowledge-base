@@ -77,9 +77,14 @@ return [
 
     'editor' => [
         'task_list' => 'Task list',
+        'subscript' => 'Subscript',
+        'superscript' => 'Superscript',
+        'clear_format' => 'Clear formatting',
+        'horizontal_rule' => 'Horizontal rule',
         'align_left' => 'Left',
         'align_center' => 'Centre',
         'align_right' => 'Right',
+        'align_justify' => 'Justify',
         'font_size' => 'Size',
         'size_default' => 'Default',
         'size_small' => 'Smaller',

@@ -41,27 +41,29 @@
                 // kopie pravdy se rozejde v okamžiku, kdy někdo použije zkratku.
                 const sync = () => {
                     this.active = {
-                        bold: this.editor.isActive('bold'),
-                        italic: this.editor.isActive('italic'),
-                        underline: this.editor.isActive('underline'),
-                        strike: this.editor.isActive('strike'),
-                        code: this.editor.isActive('code'),
-                        highlight: this.editor.isActive('highlight'),
-                        h2: this.editor.isActive('heading', { level: 2 }),
-                        h3: this.editor.isActive('heading', { level: 3 }),
-                        bullet: this.editor.isActive('bulletList'),
-                        ordered: this.editor.isActive('orderedList'),
-                        listItem: this.editor.isActive('listItem'),
-                        task: this.editor.isActive('taskList'),
-                        quote: this.editor.isActive('blockquote'),
-                        codeBlock: this.editor.isActive('codeBlock'),
-                        link: this.editor.isActive('link'),
-                        table: this.editor.isActive('table'),
-                        align: ['left', 'center', 'right'].find(a => this.editor.isActive({ textAlign: a })) ?? null,
+                        bold: this.raw().isActive('bold'),
+                        italic: this.raw().isActive('italic'),
+                        underline: this.raw().isActive('underline'),
+                        strike: this.raw().isActive('strike'),
+                        code: this.raw().isActive('code'),
+                        sub: this.raw().isActive('subscript'),
+                        sup: this.raw().isActive('superscript'),
+                        highlight: this.raw().isActive('highlight'),
+                        h2: this.raw().isActive('heading', { level: 2 }),
+                        h3: this.raw().isActive('heading', { level: 3 }),
+                        bullet: this.raw().isActive('bulletList'),
+                        ordered: this.raw().isActive('orderedList'),
+                        listItem: this.raw().isActive('listItem'),
+                        task: this.raw().isActive('taskList'),
+                        quote: this.raw().isActive('blockquote'),
+                        codeBlock: this.raw().isActive('codeBlock'),
+                        link: this.raw().isActive('link'),
+                        table: this.raw().isActive('table'),
+                        align: ['left', 'center', 'right', 'justify'].find(a => this.raw().isActive({ textAlign: a })) ?? null,
                     }
                 }
 
-                this.editor.on('transaction', sync)
+                this.raw().on('transaction', sync)
                 sync()
             })
         },
@@ -81,12 +83,28 @@
                 : this.run((chain) => chain.setFontSize(value))
         },
 
+        /*
+         * Syrová instance editoru, ne ta z reaktivních dat.
+         *
+         * Alpine drží stav komponenty v proxy a obalí do něj i editor.
+         * ProseMirror ale u každé transakce porovnává **identitu** stavu,
+         * ze kterého vznikla, se stavem, na který se aplikuje — přes proxy
+         * se rozejdou a příkaz skončí na „Applying a mismatched
+         * transaction“. Navenek to vypadá, že tlačítko nic nedělá.
+         *
+         * Musí to být metoda, ne `get`: hodnotu vrácenou z getteru by
+         * Alpine obalil znovu, kdežto návratovou hodnotu volání nechává být.
+         */
+        raw() {
+            return window.Alpine?.raw(this.editor) ?? this.editor
+        },
+
         run(command) {
-            command(this.editor.chain().focus()).run()
+            command(this.raw().chain().focus()).run()
         },
 
         link() {
-            const previous = this.editor.getAttributes('link').href ?? ''
+            const previous = this.raw().getAttributes('link').href ?? ''
             const href = window.prompt(@js(__('knowledge-base::kb.editor.link_prompt')), previous)
 
             if (href === null) {

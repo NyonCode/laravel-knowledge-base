@@ -74,7 +74,14 @@ final class Html
                     $property = mb_strtolower(trim($property));
                     $value = trim((string) $value);
 
-                    $allowed = ['color', 'background-color', 'font-size', 'text-align'];
+                    // `width` je tu kvůli roztahovacím sloupcům tabulky:
+                    // editor je nabízí, ukládá je do `<col style="width: …">`
+                    // a bez povolení by je čtenář nikdy neviděl — tabulka by
+                    // se po uložení sama přerovnala.
+                    $allowed = [
+                        'color', 'background-color', 'font-size', 'text-align',
+                        'width', 'min-width',
+                    ];
 
                     if (! in_array($property, $allowed, true) || $value === '') {
                         continue;
@@ -150,7 +157,7 @@ final class Html
             ->allowSafeElements()
             ->allowElement('h2', ['id', 'class', 'style'])
             ->allowElement('h3', ['id', 'class', 'style'])
-            ->allowElement('h4', ['id', 'class'])
+            ->allowElement('h4', ['id', 'class', 'style'])
             ->allowElement('table', ['class', 'style'])
             ->allowElement('colgroup')
             ->allowElement('col', ['style'])
@@ -158,8 +165,8 @@ final class Html
             ->allowElement('thead')
             ->allowElement('tbody')
             ->allowElement('tr')
-            ->allowElement('th', ['align', 'colspan', 'rowspan', 'style'])
-            ->allowElement('td', ['align', 'colspan', 'rowspan', 'style'])
+            ->allowElement('th', ['align', 'colspan', 'rowspan', 'colwidth', 'style'])
+            ->allowElement('td', ['align', 'colspan', 'rowspan', 'colwidth', 'style'])
             ->allowElement('pre', ['class'])
             ->allowElement('code', ['class'])
             ->allowElement('span', ['class', 'style'])
@@ -170,7 +177,7 @@ final class Html
             ->allowElement('li', ['class', 'data-checked'])
             ->allowElement('label')
             ->allowElement('input', ['type', 'checked', 'disabled'])
-            ->allowElement('mark', ['class', 'style'])
+            ->allowElement('mark', ['class', 'style', 'data-color'])
             ->allowElement('u')
             ->allowElement('sub')
             ->allowElement('sup')

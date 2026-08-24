@@ -148,6 +148,14 @@ class ArticleEditor extends Component
 
     public function save(KnowledgeBase $kb): void
     {
+        // Blokový editor drží rozepsaný obsah v `blockData`; `body` je tvar,
+        // který se ukládá. Bez převedení by se uložilo to, co v `body` leželo
+        // předtím — u nového článku prázdno (a validace to zamítne jako
+        // nevyplněné tělo), u článku přepnutého z markdownu jeho starý text.
+        if ($this->format() === ContentFormat::Blocks) {
+            $this->body = self::toCanonical($this->blockData);
+        }
+
         /** @var array<string, mixed> $data */
         $data = $this->validate();
 
@@ -410,7 +418,9 @@ class ArticleEditor extends Component
             $blocks[] = ['type' => $type, 'data' => $row];
         }
 
-        return (string) json_encode($blocks);
+        // Prázdno se vrací prázdné, ne jako `[]`: pravidlo `required` by
+        // dvouznakový řetězec vzalo a uložila by se stránka bez obsahu.
+        return $blocks === [] ? '' : (string) json_encode($blocks);
     }
 
     /** @return array<int, mixed> */

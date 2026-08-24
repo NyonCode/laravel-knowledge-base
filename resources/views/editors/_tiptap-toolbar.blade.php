@@ -8,8 +8,9 @@
     Aktivní stav se čte z editoru (`active`), nedrží se vedle něj. Druhá kopie
     pravdy se rozejde ve chvíli, kdy někdo použije klávesovou zkratku.
 
-    `$compact` schová to, co se do bloku nevejde (nadpisy, zarovnání, tabulky,
-    undo): v bloku se píše odstavec, ne stránka.
+    `$compact` schová to, co má v bloku vlastní typ nebo se do řádku nevejde
+    (nadpisy, tabulky, blok kódu, undo). Zarovnání a formátování textu zůstává:
+    to vlastní typ bloku nenahradí.
 --}}
 @php
     $compact = $compact ?? false;
@@ -60,6 +61,8 @@
     <button type="button" x-on:click="run(c => c.toggleUnderline())" :class="active.underline ? '{{ $on }}' : '{{ $off }}'" class="{{ $btn }} underline">U</button>
     <button type="button" x-on:click="run(c => c.toggleStrike())" :class="active.strike ? '{{ $on }}' : '{{ $off }}'" class="{{ $btn }} line-through">S</button>
     <button type="button" x-on:click="run(c => c.toggleCode())" :class="active.code ? '{{ $on }}' : '{{ $off }}'" class="{{ $btn }} font-mono">&lt;/&gt;</button>
+    <button type="button" x-on:click="run(c => c.toggleSubscript())" :class="active.sub ? '{{ $on }}' : '{{ $off }}'" class="{{ $btn }}" title="{{ __('knowledge-base::kb.editor.subscript') }}">x<sub>2</sub></button>
+    <button type="button" x-on:click="run(c => c.toggleSuperscript())" :class="active.sup ? '{{ $on }}' : '{{ $off }}'" class="{{ $btn }}" title="{{ __('knowledge-base::kb.editor.superscript') }}">x<sup>2</sup></button>
 
     {{-- Barva písma a podbarvení: dva rozbalovací vzorníky, ne barevný kruh. --}}
     <div class="relative" x-data="{ open: false }" x-on:click.outside="open = false">
@@ -89,6 +92,13 @@
         </div>
     </div>
 
+    {{-- Vymazat formátování. Nejčastější potřeba po vložení z Wordu nebo
+         z webu, kde se přinese barva, velikost i rodina písma naráz. Kromě
+         značek se ruší i uzly, jinak by po vložení zůstal odstavec nadpisem. --}}
+    <button type="button" x-on:click="run(c => c.unsetAllMarks().clearNodes())" class="{{ $btn }} {{ $off }}" title="{{ __('knowledge-base::kb.editor.clear_format') }}">
+        <svg class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4h9M11 4 8 16M4 16h7M14 11l4 4M18 11l-4 4" /></svg>
+    </button>
+
     <span class="mx-1 h-4 w-px bg-zinc-300 dark:bg-zinc-700"></span>
 
     <button type="button" x-on:click="run(c => c.toggleBulletList())" :class="active.bullet ? '{{ $on }}' : '{{ $off }}'" class="{{ $btn }}">&bull;</button>
@@ -101,23 +111,33 @@
     <button type="button" x-show="active.listItem" x-cloak x-on:click="run(c => c.liftListItem('listItem'))" class="{{ $btn }} {{ $off }}" title="{{ __('knowledge-base::kb.editor.outdent') }}">&lsaquo;&lsaquo;</button>
     <button type="button" x-on:click="link()" :class="active.link ? '{{ $on }}' : '{{ $off }}'" class="{{ $btn }}">{{ __('knowledge-base::kb.editor.link') }}</button>
 
+    <span class="mx-1 h-4 w-px bg-zinc-300 dark:bg-zinc-700"></span>
+
+    {{-- Zarovnání jako SVG, ne Unicode: znaky jako ⯇ nebo ↺ půlka fontů nemá
+         a vykreslí místo nich prázdný čtvereček.
+
+         Na rozdíl od nadpisů a tabulek zůstává i v zúženém panelu: vystředěný
+         odstavec je běžná věc i uvnitř upozornění, a bez tlačítka by ho v
+         blokovém editoru nešlo udělat vůbec. --}}
+    @foreach ([
+        'left' => 'M3 5h14M3 9h9M3 13h14M3 17h9',
+        'center' => 'M3 5h14M6 9h8M3 13h14M6 17h8',
+        'right' => 'M3 5h14M8 9h9M3 13h14M8 17h9',
+        'justify' => 'M3 5h14M3 9h14M3 13h14M3 17h14',
+    ] as $align => $path)
+        <button type="button" x-on:click="run(c => c.setTextAlign(@js($align)))" :class="active.align === @js($align) ? '{{ $on }}' : '{{ $off }}'" class="{{ $btn }}" title="{{ __('knowledge-base::kb.editor.align_'.$align) }}">
+            <svg class="h-3.5 w-3.5" viewBox="0 0 20 22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="{{ $path }}" /></svg>
+        </button>
+    @endforeach
+
     @unless ($compact)
-        <span class="mx-1 h-4 w-px bg-zinc-300 dark:bg-zinc-700"></span>
-
-        {{-- Zarovnání a zpět/znovu jako SVG, ne Unicode: znaky jako ⯇ nebo ↺
-             půlka fontů nemá a vykreslí místo nich prázdný čtvereček. --}}
-        @foreach ([
-            'left' => 'M3 5h14M3 9h9M3 13h14M3 17h9',
-            'center' => 'M3 5h14M6 9h8M3 13h14M6 17h8',
-            'right' => 'M3 5h14M8 9h9M3 13h14M8 17h9',
-        ] as $align => $path)
-            <button type="button" x-on:click="run(c => c.setTextAlign(@js($align)))" :class="active.align === @js($align) ? '{{ $on }}' : '{{ $off }}'" class="{{ $btn }}" title="{{ __('knowledge-base::kb.editor.align_'.$align) }}">
-                <svg class="h-3.5 w-3.5" viewBox="0 0 20 22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="{{ $path }}" /></svg>
-            </button>
-        @endforeach
-
         <button type="button" x-on:click="run(c => c.toggleBlockquote())" :class="active.quote ? '{{ $on }}' : '{{ $off }}'" class="{{ $btn }}">&ldquo;</button>
         <button type="button" x-on:click="run(c => c.toggleCodeBlock())" :class="active.codeBlock ? '{{ $on }}' : '{{ $off }}'" class="{{ $btn }} font-mono">```</button>
+        {{-- V blokovém editoru na to je vlastní typ, tady jinak předěl udělat
+             nejde – StarterKit ho umí, jen o něj nikdo nežádal. --}}
+        <button type="button" x-on:click="run(c => c.setHorizontalRule())" class="{{ $btn }} {{ $off }}" title="{{ __('knowledge-base::kb.editor.horizontal_rule') }}">
+            <svg class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M3 10h14" /></svg>
+        </button>
 
         <span class="mx-1 h-4 w-px bg-zinc-300 dark:bg-zinc-700"></span>
 

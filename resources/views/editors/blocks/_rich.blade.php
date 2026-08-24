@@ -43,21 +43,27 @@
 
                     const sync = () => {
                         this.active = {
-                            bold: this.editor.isActive('bold'),
-                            italic: this.editor.isActive('italic'),
-                            underline: this.editor.isActive('underline'),
-                            strike: this.editor.isActive('strike'),
-                            code: this.editor.isActive('code'),
-                            highlight: this.editor.isActive('highlight'),
-                            bullet: this.editor.isActive('bulletList'),
-                            ordered: this.editor.isActive('orderedList'),
-                            listItem: this.editor.isActive('listItem'),
-                            task: this.editor.isActive('taskList'),
-                            link: this.editor.isActive('link'),
+                            bold: this.raw().isActive('bold'),
+                            italic: this.raw().isActive('italic'),
+                            underline: this.raw().isActive('underline'),
+                            strike: this.raw().isActive('strike'),
+                            code: this.raw().isActive('code'),
+                            sub: this.raw().isActive('subscript'),
+                            sup: this.raw().isActive('superscript'),
+                            highlight: this.raw().isActive('highlight'),
+                            bullet: this.raw().isActive('bulletList'),
+                            ordered: this.raw().isActive('orderedList'),
+                            listItem: this.raw().isActive('listItem'),
+                            task: this.raw().isActive('taskList'),
+                            link: this.raw().isActive('link'),
+                            // Zarovnání se nedá zjistit jedním dotazem: je to
+                            // atribut uzlu, ne značka, tak se zkusí hodnoty.
+                            align: ['left', 'center', 'right', 'justify']
+                                .find(a => this.raw().isActive({ textAlign: a })) ?? null,
                         }
                     }
 
-                    this.editor.on('transaction', sync)
+                    this.raw().on('transaction', sync)
                     sync()
                 })
             },
@@ -77,10 +83,26 @@
                     : this.run((chain) => chain.setFontSize(value))
             },
 
-            run(command) { command(this.editor.chain().focus()).run() },
+            /*
+             * Syrová instance editoru, ne ta z reaktivních dat.
+             *
+             * Alpine drží stav komponenty v proxy a obalí do něj i editor.
+             * ProseMirror ale u každé transakce porovnává **identitu** stavu,
+             * ze kterého vznikla, se stavem, na který se aplikuje — přes proxy
+             * se rozejdou a příkaz skončí na „Applying a mismatched
+             * transaction“. Navenek to vypadá, že tlačítko nic nedělá.
+             *
+             * Musí to být metoda, ne `get`: hodnotu vrácenou z getteru by
+             * Alpine obalil znovu, kdežto návratovou hodnotu volání nechává být.
+             */
+            raw() {
+                return window.Alpine?.raw(this.editor) ?? this.editor
+            },
+
+            run(command) { command(this.raw().chain().focus()).run() },
 
             link() {
-                const previous = this.editor.getAttributes('link').href ?? ''
+                const previous = this.raw().getAttributes('link').href ?? ''
                 const href = window.prompt(@js(__('knowledge-base::kb.editor.link_prompt')), previous)
 
                 if (href === null) return
