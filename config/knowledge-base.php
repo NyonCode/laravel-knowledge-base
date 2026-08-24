@@ -33,6 +33,28 @@ return [
             'edit' => 'admin.knowledge-edit',
             'categories' => 'admin.knowledge-categories',
         ],
+
+        /*
+        | Reading surfaces
+        |
+        | The same base is usually needed twice: publicly for customers and
+        | inside the admin for the team. Two *surfaces* over one set of
+        | articles — they differ only in layout and in the routes they link
+        | to. Without that, an article opened in the admin would link out to
+        | the public site and drop the reader out of the context they were
+        | working in.
+        |
+        | `prefix` names the surface's own read routes, `layout` its shell,
+        | and `when` activates it for route names starting with that string.
+        | A route can also say so outright: `->defaults('kb_surface', 'admin')`.
+        */
+        'surfaces' => [
+            'public' => [
+                'prefix' => null, // = routes.name
+                'layout' => null, // = layouts.public
+                'when' => null,
+            ],
+        ],
     ],
 
     /*

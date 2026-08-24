@@ -42,14 +42,6 @@ return [
         'lead' => 'Guides, procedures and reference for everything here.',
         'placeholder' => 'What do you need to do?',
         'popular' => 'Most read',
-        'categories' => 'Categories',
-        'new_category' => 'New category',
-        'category_name' => 'Name',
-        'order' => 'Order',
-        'cancel' => 'Cancel',
-        'delete' => 'Delete',
-        'article_count' => '{0} no articles|{1} :count article|[2,*] :count articles',
-        'delete_category_confirm' => 'Delete this category? Its articles stay and can be filed elsewhere.',
         'empty' => 'Nothing here yet.',
     ],
 
@@ -62,6 +54,7 @@ return [
     ],
 
     'article' => [
+        'edit' => 'Edit',
         'toc' => 'On this page',
         'reading_time' => ':minutes min read',
         'updated' => 'Updated :date',
@@ -83,6 +76,20 @@ return [
     ],
 
     'admin' => [
+        'category' => 'Category',
+        'status' => 'Status',
+        'slug_warning' => 'Changing the address breaks links people already shared.',
+        'excerpt' => 'Summary',
+        'excerpt_hint' => 'Shown in search results and listings.',
+        'visibility_label' => 'Visible to',
+        'categories' => 'Categories',
+        'new_category' => 'New category',
+        'category_name' => 'Name',
+        'order' => 'Order',
+        'cancel' => 'Cancel',
+        'delete' => 'Delete',
+        'article_count' => '{0} no articles|{1} :count article|[2,*] :count articles',
+        'delete_category_confirm' => 'Delete this category? Its articles stay and can be filed elsewhere.',
         'needs_work' => 'Needs work',
         'all' => 'All articles',
         'stale' => 'Not checked lately',

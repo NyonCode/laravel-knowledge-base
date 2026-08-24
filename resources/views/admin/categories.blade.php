@@ -28,11 +28,11 @@
                 @error('slug') <p class="mt-1 text-sm text-rose-600">{{ $message }}</p> @enderror
             </div>
             <div class="sm:col-span-2">
-                <label for="kbc-desc" class="block text-xs font-semibold uppercase tracking-wide text-zinc-500">{{ __('knowledge-base::kb.home.lead') }}</label>
+                <label for="kbc-desc" class="block text-xs font-semibold uppercase tracking-wide text-zinc-500">{{ __('knowledge-base::kb.admin.excerpt') }}</label>
                 <input id="kbc-desc" type="text" wire:model="description" class="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white" />
             </div>
             <div>
-                <label for="kbc-vis" class="block text-xs font-semibold uppercase tracking-wide text-zinc-500">{{ __('knowledge-base::kb.visibility.public') }}</label>
+                <label for="kbc-vis" class="block text-xs font-semibold uppercase tracking-wide text-zinc-500">{{ __('knowledge-base::kb.admin.visibility_label') }}</label>
                 <select id="kbc-vis" wire:model="visibility" class="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white">
                     @foreach ($visibilities as $option)
                         <option value="{{ $option->value }}">{{ $option->label() }}</option>

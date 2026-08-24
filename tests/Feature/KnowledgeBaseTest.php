@@ -5,6 +5,7 @@ declare(strict_types=1);
 use NyonCode\KnowledgeBase\Enums\ContentFormat;
 use NyonCode\KnowledgeBase\Models\Article;
 use NyonCode\KnowledgeBase\Models\Category;
+use NyonCode\KnowledgeBase\Services\CommonMarkRenderer;
 use NyonCode\KnowledgeBase\Services\KnowledgeBase;
 use NyonCode\KnowledgeBase\Services\RendererRegistry;
 
@@ -165,4 +166,31 @@ it('keeps articles when their category is deleted', function () {
 
     expect($article->fresh())->not->toBeNull()
         ->and($article->fresh()->category_id)->toBeNull();
+});
+
+it('gives every heading an id so the contents can link to it', function () {
+    // Kotva z HeadingPermalink nese id uvnitř nadpisu, ne na něm – bez
+    // doplnění by obsah stránky odkazoval do prázdna a vypadalo by to jako
+    // článek bez nadpisů.
+    $renderer = app(CommonMarkRenderer::class);
+
+    $html = $renderer->render("## První krok\n\ntext\n\n## Druhý krok\n\ntext");
+
+    expect($html)->toContain('id="prvni-krok"');
+
+    $toc = $renderer->tableOfContents($html);
+
+    expect($toc)->toHaveCount(2)
+        ->and($toc[0]['title'])->toBe('První krok')
+        ->and($toc[1]['id'])->toBe('druhy-krok');
+});
+
+it('does not let two headings of the same name share an anchor', function () {
+    $renderer = app(CommonMarkRenderer::class);
+
+    $toc = $renderer->tableOfContents(
+        $renderer->render("## Poznámky\n\na\n\n## Poznámky\n\nb")
+    );
+
+    expect($toc[0]['id'])->not->toBe($toc[1]['id']);
 });

@@ -27,10 +27,14 @@ final class Layouts
         return self::apply($view, 'admin');
     }
 
-    private static function apply(View $view, string $surface): View
+    private static function apply(View $view, string $shell): View
     {
-        $layout = Settings::nullableString("layouts.{$surface}");
+        // Čtenářská plocha si layout nese sama: tatáž komponenta se vykresluje
+        // jednou na webu a jednou v administraci.
+        $layout = $shell === 'public'
+            ? Surface::layout()
+            : Settings::nullableString("layouts.{$shell}");
 
-        return blank($layout) ? $view : $view->layout((string) $layout);
+        return $layout === null ? $view : $view->layout($layout);
     }
 }

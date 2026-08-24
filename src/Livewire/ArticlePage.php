@@ -6,6 +6,7 @@ namespace NyonCode\KnowledgeBase\Livewire;
 
 use Illuminate\Contracts\View\View;
 use Livewire\Component;
+use NyonCode\KnowledgeBase\Contracts\KnowledgeAudience;
 use NyonCode\KnowledgeBase\Models\Article;
 use NyonCode\KnowledgeBase\Services\KnowledgeBase;
 use NyonCode\KnowledgeBase\Services\RendererRegistry;
@@ -91,9 +92,16 @@ class ArticlePage extends Component
         $this->feedbackComment = '';
     }
 
-    public function render(KnowledgeBase $kb, RendererRegistry $renderers): View
-    {
+    public function render(
+        KnowledgeBase $kb,
+        RendererRegistry $renderers,
+        KnowledgeAudience $audience
+    ): View {
         return Layouts::public(view('knowledge-base::public.article', [
+            // Kdo smí psát, dostane cestu do editoru rovnou z článku. Najít
+            // chybu při čtení a muset ji pak hledat ve frontě je přesně ten
+            // třecí bod, kvůli kterému se překlepy neopravují.
+            'editable' => $audience->canManage(auth()->user()),
             // Asked of the renderer that matches this article's format: the
             // three read headings the same way today, but a fourth need not.
             'toc' => $renderers

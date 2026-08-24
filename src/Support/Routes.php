@@ -54,9 +54,15 @@ final class Routes
             : self::to(Settings::string('routes.admin.edit'), $article);
     }
 
+    /**
+     * Název čtecí routy pro plochu, na které se právě je.
+     *
+     * Odsud plyne, že článek otevřený v adminu odkazuje na admin, ne na
+     * veřejný web — jinak by čtenáře vyhodil z kontextu, ve kterém pracoval.
+     */
     private static function readName(string $suffix): string
     {
-        return Settings::string('routes.name', 'knowledge.').$suffix;
+        return Surface::routePrefix().$suffix;
     }
 
     private static function to(string $name, mixed $parameters = []): string

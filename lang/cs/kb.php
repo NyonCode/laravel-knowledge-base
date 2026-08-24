@@ -42,14 +42,6 @@ return [
         'lead' => 'Návody, postupy a reference ke všemu, co tu běží.',
         'placeholder' => 'Co potřebuješ udělat?',
         'popular' => 'Nejčtenější',
-        'categories' => 'Kategorie',
-        'new_category' => 'Nová kategorie',
-        'category_name' => 'Název',
-        'order' => 'Pořadí',
-        'cancel' => 'Zrušit',
-        'delete' => 'Smazat',
-        'article_count' => '{0} bez článků|{1} :count článek|[2,4] :count články|[5,*] :count článků',
-        'delete_category_confirm' => 'Smazat kategorii? Články zůstanou a půjde je zařadit jinam.',
         'empty' => 'Zatím tu nic není.',
     ],
 
@@ -62,6 +54,7 @@ return [
     ],
 
     'article' => [
+        'edit' => 'Upravit',
         'toc' => 'Na téhle stránce',
         'reading_time' => 'čtení :minutes min',
         'updated' => 'Upraveno :date',
@@ -83,6 +76,20 @@ return [
     ],
 
     'admin' => [
+        'category' => 'Kategorie',
+        'status' => 'Stav',
+        'slug_warning' => 'Změna adresy rozbije odkazy, které už někdo sdílel.',
+        'excerpt' => 'Shrnutí',
+        'excerpt_hint' => 'Ukáže se ve výsledcích hledání a ve výpisech.',
+        'visibility_label' => 'Vidí',
+        'categories' => 'Kategorie',
+        'new_category' => 'Nová kategorie',
+        'category_name' => 'Název',
+        'order' => 'Pořadí',
+        'cancel' => 'Zrušit',
+        'delete' => 'Smazat',
+        'article_count' => '{0} bez článků|{1} :count článek|[2,4] :count články|[5,*] :count článků',
+        'delete_category_confirm' => 'Smazat kategorii? Články zůstanou a půjde je zařadit jinam.',
         'needs_work' => 'Potřebuje pozornost',
         'all' => 'Všechny články',
         'stale' => 'Dlouho neověřené',

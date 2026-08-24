@@ -27,6 +27,14 @@
                             {{ $article->visibility->label() }}
                         </span>
                     @endunless
+
+                    @if ($editable)
+                        <a
+                            href="{{ \NyonCode\KnowledgeBase\Support\Routes::adminEdit($article) }}"
+                            wire:navigate
+                            class="ml-auto inline-flex items-center gap-1 rounded-md border border-zinc-300 px-2 py-0.5 text-xs font-medium text-zinc-600 transition hover:border-zinc-400 hover:text-zinc-900 dark:border-zinc-700 dark:text-zinc-300"
+                        >{{ __('knowledge-base::kb.article.edit') }}</a>
+                    @endif
                 </div>
 
                 <h1 class="mt-3 text-3xl font-semibold tracking-tight text-zinc-900 dark:text-white">

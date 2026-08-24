@@ -61,15 +61,16 @@
                     @if ($article?->exists)
                         {{-- Said out loud, because the field looks editable and
                              changing it silently breaks every shared link. --}}
-                        <p class="mt-1 text-xs text-zinc-500">Změna adresy rozbije odkazy, které už někdo sdílel.</p>
+                        <p class="mt-1 text-xs text-zinc-500">{{ __('knowledge-base::kb.admin.slug_warning') }}</p>
                     @endif
                 </div>
 
                 <div>
                     <label for="kb-excerpt" class="block text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                        {{ __('knowledge-base::kb.home.lead') }}
+                        {{ __('knowledge-base::kb.admin.excerpt') }}
                     </label>
                     <textarea id="kb-excerpt" rows="3" wire:model="excerpt" class="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white"></textarea>
+                    <p class="mt-1 text-xs text-zinc-500">{{ __('knowledge-base::kb.admin.excerpt_hint') }}</p>
                 </div>
 
                 @if ($editors->count() > 1 && ! $article?->exists)
@@ -110,7 +111,7 @@
                 </fieldset>
 
                 <div>
-                    <label for="kb-category" class="block text-xs font-semibold uppercase tracking-wide text-zinc-500">Kategorie</label>
+                    <label for="kb-category" class="block text-xs font-semibold uppercase tracking-wide text-zinc-500">{{ __('knowledge-base::kb.admin.category') }}</label>
                     <select id="kb-category" wire:model="categoryId" class="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white">
                         <option value="">—</option>
                         @foreach ($categories as $id => $name)
@@ -123,7 +124,7 @@
                      labelled: status is our readiness, visibility is whose eyes. --}}
                 <div class="grid grid-cols-2 gap-3">
                     <div>
-                        <label for="kb-status" class="block text-xs font-semibold uppercase tracking-wide text-zinc-500">Stav</label>
+                        <label for="kb-status" class="block text-xs font-semibold uppercase tracking-wide text-zinc-500">{{ __('knowledge-base::kb.admin.status') }}</label>
                         <select id="kb-status" wire:model="status" class="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white">
                             @foreach ($statuses as $option)
                                 <option value="{{ $option->value }}">{{ $option->label() }}</option>
@@ -131,7 +132,7 @@
                         </select>
                     </div>
                     <div>
-                        <label for="kb-visibility" class="block text-xs font-semibold uppercase tracking-wide text-zinc-500">Vidí</label>
+                        <label for="kb-visibility" class="block text-xs font-semibold uppercase tracking-wide text-zinc-500">{{ __('knowledge-base::kb.admin.visibility_label') }}</label>
                         <select id="kb-visibility" wire:model="visibility" class="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-white">
                             @foreach ($visibilities as $option)
                                 <option value="{{ $option->value }}">{{ $option->label() }}</option>
