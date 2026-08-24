@@ -56,7 +56,7 @@
             <div class="max-h-80 overflow-y-auto p-2">
                 @forelse ($results as $i => $article)
                     <a
-                        href="{{ route(config('knowledge-base.routes.name').'article', $article) }}"
+                        href="{{ \NyonCode\KnowledgeBase\Support\Routes::article($article) }}"
                         wire:navigate
                         x-on:click="open = false"
                         :class="index === {{ $i }} ? 'bg-sky-50 dark:bg-sky-500/10' : ''"

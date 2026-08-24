@@ -1,7 +1,7 @@
 {{-- One collection, grouped by errand. See CategoryPage for why the grouping
      is by kind and not alphabetical. --}}
 <div class="mx-auto max-w-4xl px-4 py-10 sm:px-6 lg:px-8">
-    <a href="{{ route(config('knowledge-base.routes.name').'home') }}" wire:navigate class="text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200">
+    <a href="{{ \NyonCode\KnowledgeBase\Support\Routes::home() }}" wire:navigate class="text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200">
         &larr; {{ __('knowledge-base::kb.article.back') }}
     </a>
 

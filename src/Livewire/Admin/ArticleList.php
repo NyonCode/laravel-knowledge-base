@@ -13,6 +13,7 @@ use NyonCode\KnowledgeBase\Contracts\KnowledgeAudience;
 use NyonCode\KnowledgeBase\Enums\ArticleStatus;
 use NyonCode\KnowledgeBase\Models\Article;
 use NyonCode\KnowledgeBase\Models\Category;
+use NyonCode\KnowledgeBase\Support\Layouts;
 
 /**
  * The editor's desk.
@@ -53,7 +54,7 @@ class ArticleList extends Component
 
     public function render(): View
     {
-        return view('knowledge-base::admin.articles', [
+        return Layouts::admin(view('knowledge-base::admin.articles', [
             'articles' => $this->query()->paginate(20),
             'categories' => Category::query()->ordered()->pluck('name', 'id'),
             'statuses' => ArticleStatus::options(),
@@ -61,7 +62,7 @@ class ArticleList extends Component
                 'stale' => Article::query()->stale()->count(),
                 'draft' => Article::query()->where('status', ArticleStatus::Draft->value)->count(),
             ],
-        ]);
+        ]));
     }
 
     /** @return Builder<Article> */

@@ -18,6 +18,7 @@ use NyonCode\KnowledgeBase\Models\Category;
 use NyonCode\KnowledgeBase\Services\EditorRegistry;
 use NyonCode\KnowledgeBase\Services\KnowledgeBase;
 use NyonCode\KnowledgeBase\Services\RendererRegistry;
+use NyonCode\KnowledgeBase\Support\Layouts;
 
 /**
  * Write an article.
@@ -219,7 +220,7 @@ class ArticleEditor extends Component
     {
         $driver = $editors->get($this->editor) ?? $editors->default();
 
-        return view('knowledge-base::admin.editor', [
+        return Layouts::admin(view('knowledge-base::admin.editor', [
             'categories' => Category::query()->ordered()->pluck('name', 'id'),
             'kinds' => ArticleKind::cases(),
             'statuses' => ArticleStatus::cases(),
@@ -234,6 +235,6 @@ class ArticleEditor extends Component
                         : $this->body
                 )
                 : null,
-        ]);
+        ]));
     }
 }

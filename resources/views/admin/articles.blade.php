@@ -10,7 +10,7 @@
                 · {{ $counts['draft'] }} × {{ __('knowledge-base::kb.status.draft') }}
             </p>
         </div>
-        <a href="{{ route('kb.admin.editor') }}" wire:navigate class="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white dark:bg-white dark:text-zinc-900">
+        <a href="{{ \NyonCode\KnowledgeBase\Support\Routes::adminEdit() }}" wire:navigate class="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white dark:bg-white dark:text-zinc-900">
             {{ __('knowledge-base::kb.admin.new') }}
         </a>
     </div>
@@ -55,7 +55,7 @@
                 @forelse ($articles as $article)
                     <tr wire:key="kb-{{ $article->id }}" class="hover:bg-zinc-50 dark:hover:bg-zinc-900">
                         <td class="px-4 py-3">
-                            <a href="{{ route('kb.admin.editor', $article) }}" wire:navigate class="font-medium text-zinc-900 hover:text-sky-700 dark:text-zinc-100">
+                            <a href="{{ \NyonCode\KnowledgeBase\Support\Routes::adminEdit($article) }}" wire:navigate class="font-medium text-zinc-900 hover:text-sky-700 dark:text-zinc-100">
                                 {{ $article->title }}
                             </a>
                             <div class="mt-0.5 flex items-center gap-2 text-xs text-zinc-500">

@@ -24,6 +24,33 @@ return [
         'prefix' => 'napoveda',
         'name' => 'knowledge.',
         'middleware' => ['web'],
+
+        // Writing lives in the host's admin, so it names those routes. Left
+        // empty, the editor links render dead rather than throwing.
+        'admin' => [
+            'index' => 'admin.knowledge',
+            'create' => 'admin.knowledge-create',
+            'edit' => 'admin.knowledge-edit',
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Layouts
+    |--------------------------------------------------------------------------
+    |
+    | Which layout the full-page components render into. Null leaves Livewire's
+    | own default in place, which is right for a fresh Livewire app and wrong
+    | for one that already had layouts before installing this.
+    |
+    | Two, because the reading surfaces and the admin ones almost never want
+    | the same chrome.
+    |
+    */
+
+    'layouts' => [
+        'public' => null,
+        'admin' => null,
     ],
 
     /*

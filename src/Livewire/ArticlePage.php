@@ -9,6 +9,7 @@ use Livewire\Component;
 use NyonCode\KnowledgeBase\Models\Article;
 use NyonCode\KnowledgeBase\Services\KnowledgeBase;
 use NyonCode\KnowledgeBase\Services\RendererRegistry;
+use NyonCode\KnowledgeBase\Support\Layouts;
 
 /**
  * The page people actually came for.
@@ -29,9 +30,17 @@ class ArticlePage extends Component
 
     public bool $askingWhy = false;
 
-    public function mount(string $article, KnowledgeBase $kb): void
+    /**
+     * Takes the slug, never a bound model.
+     *
+     * Route model binding would resolve the article *before* anyone asked the
+     * audience, so an internal page would open for whoever guessed its
+     * address. The lookup therefore happens here, through the service that
+     * applies visibility.
+     */
+    public function mount(string $slug, KnowledgeBase $kb): void
     {
-        $found = $kb->article($article, auth()->user());
+        $found = $kb->article($slug, auth()->user());
 
         // 404, never 403: telling an anonymous visitor that a slug exists but
         // is forbidden leaks exactly the thing that was worth hiding.
@@ -83,13 +92,13 @@ class ArticlePage extends Component
 
     public function render(KnowledgeBase $kb, RendererRegistry $renderers): View
     {
-        return view('knowledge-base::public.article', [
+        return Layouts::public(view('knowledge-base::public.article', [
             // Asked of the renderer that matches this article's format: the
             // three read headings the same way today, but a fourth need not.
             'toc' => $renderers
                 ->for($this->article->format)
                 ->tableOfContents((string) $this->article->body_html),
             'related' => $kb->related($this->article, auth()->user()),
-        ])->title($this->article->title);
+        ]))->title($this->article->title);
     }
 }

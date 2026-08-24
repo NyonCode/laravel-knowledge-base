@@ -8,12 +8,12 @@
 
         <article class="min-w-0">
             <nav class="mb-6 flex items-center gap-2 text-sm text-zinc-500" aria-label="Breadcrumb">
-                <a href="{{ route(config('knowledge-base.routes.name').'home') }}" wire:navigate class="hover:text-zinc-900 dark:hover:text-zinc-200">
+                <a href="{{ \NyonCode\KnowledgeBase\Support\Routes::home() }}" wire:navigate class="hover:text-zinc-900 dark:hover:text-zinc-200">
                     {{ __('knowledge-base::kb.home.title') }}
                 </a>
                 @if ($article->category)
                     <span aria-hidden="true">/</span>
-                    <a href="{{ route(config('knowledge-base.routes.name').'category', $article->category) }}" wire:navigate class="hover:text-zinc-900 dark:hover:text-zinc-200">
+                    <a href="{{ \NyonCode\KnowledgeBase\Support\Routes::category($article->category) }}" wire:navigate class="hover:text-zinc-900 dark:hover:text-zinc-200">
                         {{ $article->category->name }}
                     </a>
                 @endif

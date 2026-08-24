@@ -2,7 +2,7 @@
      the excerpt — a reader scanning a column of these decides on the first
      line and should not have to read three to rule a page out. --}}
 <a
-    href="{{ route(config('knowledge-base.routes.name').'article', $article) }}"
+    href="{{ \NyonCode\KnowledgeBase\Support\Routes::article($article) }}"
     wire:navigate
     class="group flex flex-col gap-1 rounded-xl border border-zinc-200 bg-white p-4 transition hover:border-zinc-300 hover:shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700"
 >

@@ -11,6 +11,7 @@ use Livewire\Component;
 use NyonCode\KnowledgeBase\Contracts\KnowledgeAudience;
 use NyonCode\KnowledgeBase\Models\Article;
 use NyonCode\KnowledgeBase\Services\KnowledgeBase;
+use NyonCode\KnowledgeBase\Support\Layouts;
 
 /**
  * The front door: one search field, then the map.
@@ -31,12 +32,12 @@ class KnowledgeHome extends Component
         $reader = auth()->user();
         $searching = trim($this->term) !== '';
 
-        return view('knowledge-base::public.home', [
+        return Layouts::public(view('knowledge-base::public.home', [
             'searching' => $searching,
             'results' => $searching ? $kb->find($this->term, $reader) : collect(),
             'categories' => $searching ? collect() : $kb->categories($reader),
             'popular' => $searching ? collect() : $this->popular(),
-        ])->title(__('knowledge-base::kb.home.title'));
+        ]))->title(__('knowledge-base::kb.home.title'));
     }
 
     /**

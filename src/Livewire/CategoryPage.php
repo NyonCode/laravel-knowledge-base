@@ -10,6 +10,7 @@ use NyonCode\KnowledgeBase\Contracts\KnowledgeAudience;
 use NyonCode\KnowledgeBase\Enums\ArticleKind;
 use NyonCode\KnowledgeBase\Models\Article;
 use NyonCode\KnowledgeBase\Models\Category;
+use NyonCode\KnowledgeBase\Support\Layouts;
 
 /**
  * One collection, grouped by what each page is for.
@@ -42,7 +43,7 @@ class CategoryPage extends Component
 
         $articles = $query->ordered()->get();
 
-        return view('knowledge-base::public.category', [
+        return Layouts::public(view('knowledge-base::public.category', [
             'groups' => collect(ArticleKind::cases())
                 ->sortBy(fn (ArticleKind $kind) => $kind->weight())
                 ->mapWithKeys(fn (ArticleKind $kind) => [
@@ -55,6 +56,6 @@ class CategoryPage extends Component
                 ])
                 ->filter(fn (array $group) => $group['articles']->isNotEmpty()),
             'total' => $articles->count(),
-        ])->title($this->category->name);
+        ]))->title($this->category->name);
     }
 }

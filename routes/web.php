@@ -33,5 +33,9 @@ Route::middleware(config('knowledge-base.routes.middleware', ['web']))
     ->group(function (): void {
         Route::get('/', KnowledgeHome::class)->name('home');
         Route::get('/kategorie/{category:slug}', CategoryPage::class)->name('category');
-        Route::get('/{article:slug}', ArticlePage::class)->name('article');
+        // `{slug}`, ne `{article:slug}`: model binding by článek našel **před**
+        // mountem, tedy před tím, než se kdokoli zeptá publika — a interní
+        // stránka by se otevřela komukoli, kdo uhodne adresu. Vyhledání patří
+        // do mountu, kde jde přes KnowledgeBase::article().
+        Route::get('/{slug}', ArticlePage::class)->name('article');
     });
