@@ -23,12 +23,18 @@
         x-data="{
             editor: null,
             active: {},
+            // Dokud se editor nenamontuje, drží se textarea. Prázdný rámeček
+            // by vypadal jako rozbité pole a autor by neměl kam psát —
+            // nejčastěji se to stane, když hostitel bundle nenasadil.
+            ready: false,
 
             init() {
                 this.$nextTick(() => {
                     if (typeof window.kbEditor !== 'function') {
                         return
                     }
+
+                    this.ready = true
 
                     this.editor = window.kbEditor(this.$refs.surface, {
                         content: @js($value),
@@ -70,9 +76,14 @@
         }"
         class="overflow-hidden rounded-lg border border-zinc-200 dark:border-zinc-800"
     >
-        @include('knowledge-base::editors._tiptap-toolbar', ['compact' => true])
+        <div x-show="ready" x-cloak>
+            @include('knowledge-base::editors._tiptap-toolbar', ['compact' => true])
+        </div>
 
-        <div wire:ignore>
+        <textarea x-show="! ready" rows="3" wire:model.blur="{{ $statePath }}"
+            class="w-full border-0 p-3 text-sm focus:ring-0 dark:bg-zinc-950 dark:text-zinc-100"></textarea>
+
+        <div wire:ignore x-show="ready">
             <div
                 x-ref="surface"
                 data-testid="kb-block-rich-{{ $index }}"

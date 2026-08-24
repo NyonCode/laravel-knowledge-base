@@ -18,6 +18,7 @@
         editor: null,
         active: {},
         uploading: false,
+        ready: false,
 
         init() {
             // `$nextTick`: v `init()` rodiče ještě `$refs` potomků nejsou
@@ -26,6 +27,8 @@
                 if (typeof window.kbEditor !== 'function') {
                     return
                 }
+
+                this.ready = true
 
                 this.editor = window.kbEditor(this.$refs.surface, {
                     content: @js($this->{$statePath}),
@@ -111,9 +114,15 @@
     x-on:kb-image-picked.window="insertImage($event.detail.url)"
     class="relative overflow-hidden rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900"
 >
-    @include('knowledge-base::editors._tiptap-toolbar')
+    <div x-show="ready" x-cloak>
+        @include('knowledge-base::editors._tiptap-toolbar')
+    </div>
 
-    <div wire:ignore x-on:drop="dropped($event)" x-on:dragover.prevent>
+    {{-- Bez načteného bundle zůstane pole použitelné, jen bez formátování. --}}
+    <textarea x-show="! ready" rows="20" wire:model.blur="{{ $statePath }}"
+        class="w-full border-0 p-4 font-mono text-sm focus:ring-0 dark:bg-zinc-900 dark:text-zinc-100"></textarea>
+
+    <div wire:ignore x-show="ready" x-on:drop="dropped($event)" x-on:dragover.prevent>
         <div
             x-ref="surface"
             class="kb-prose prose prose-zinc min-h-[24rem] max-w-none p-4 focus:outline-none dark:prose-invert"

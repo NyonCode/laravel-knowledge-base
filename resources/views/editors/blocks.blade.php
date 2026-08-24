@@ -41,7 +41,7 @@
 
         /*
          * Kam blok spadne, ukazuje **ghost, do kterého se bloky rozestoupí**,
-         * ne obarvený cíl: „nad" a „pod" jsou dva různé výsledky a na
+         * ne obarvený cíl: nad a pod jsou dva různé výsledky a na
          * zvýrazněném bloku je od sebe nepoznáš. Rozhoduje půlka výšky.
          */
         over(event, index) {
