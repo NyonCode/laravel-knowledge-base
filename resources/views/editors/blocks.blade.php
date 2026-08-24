@@ -13,14 +13,69 @@
     $types = (array) config('knowledge-base.editors.blocks.types', []);
 @endphp
 
-<div class="space-y-3" data-testid="kb-editor-blocks">
+<div
+    data-testid="kb-editor-blocks"
+    x-data="{
+        dragged: null,
+        gap: null,
+
+        start(index) { this.dragged = index },
+
+        /*
+         * Kam blok spadne, ukazuje **mezera, do které se bloky rozestoupí**,
+         * ne zvýraznění cílového bloku: „nad" a „pod" jsou dva různé výsledky
+         * a na obarveném bloku je od sebe nepoznáš. Rozhoduje půlka výšky.
+         */
+        over(event, index) {
+            if (this.dragged === null) return
+
+            event.preventDefault()
+            event.dataTransfer.dropEffect = 'move'
+
+            const box = event.currentTarget.getBoundingClientRect()
+            this.gap = event.clientY < box.top + box.height / 2 ? index : index + 1
+        },
+
+        drop() {
+            if (this.dragged !== null && this.gap !== null && this.gap !== this.dragged) {
+                $wire.moveBlockTo(this.dragged, this.gap)
+            }
+
+            this.reset()
+        },
+
+        reset() { this.dragged = null; this.gap = null },
+
+        opens(index) { return this.dragged !== null && this.gap === index },
+    }"
+    x-on:dragend="reset()"
+    class="space-y-3"
+>
     @forelse ($this->blockData as $index => $block)
         @php $type = $block['type'] ?? 'text'; @endphp
 
+        {{-- Mezera nad blokem – otevře se, jen když se něco táhne. --}}
+        <div wire:key="kb-gap-{{ $index }}"
+             x-show="opens({{ $index }})"
+             x-on:dragover="over($event, {{ $index }})"
+             x-on:drop.prevent="drop()"
+             class="rounded-lg border-2 border-dashed border-sky-400 bg-sky-50 py-4 dark:bg-sky-500/10"></div>
+
         <div wire:key="kb-block-{{ $index }}-{{ $type }}"
+             x-on:dragover="over($event, {{ $index }})"
+             x-on:drop.prevent="drop()"
+             :class="dragged === {{ $index }} ? 'opacity-40' : ''"
              class="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
             <div class="mb-2 flex items-center justify-between">
                 <span class="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                    {{-- Táhne se za úchyt, ne za celý blok: uvnitř se vybírá
+                         text a označení odstavce by jinak začalo přesun. --}}
+                    <span
+                        draggable="true"
+                        x-on:dragstart="start({{ $index }})"
+                        class="cursor-grab select-none text-zinc-400 active:cursor-grabbing"
+                        aria-hidden="true"
+                    >⠿</span>
                     {{ __('knowledge-base::kb.editor.block.'.$type) ?: $type }}
                 </span>
                 <div class="flex items-center gap-1">
@@ -55,6 +110,11 @@
             {{ __('knowledge-base::kb.editor.block.empty') }}
         </p>
     @endforelse
+
+    <div x-show="opens({{ count($this->blockData) }})"
+         x-on:dragover.prevent="gap = {{ count($this->blockData) }}"
+         x-on:drop.prevent="drop()"
+         class="rounded-lg border-2 border-dashed border-sky-400 bg-sky-50 py-4 dark:bg-sky-500/10"></div>
 
     <button
         type="button"

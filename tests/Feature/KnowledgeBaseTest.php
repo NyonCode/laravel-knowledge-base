@@ -439,3 +439,41 @@ it('names every offered block type in every language', function (string $locale)
 
     expect($missing->all())->toBe([]);
 })->with(['cs', 'en']);
+
+it('moves a block into the gap the reader dropped it on', function () {
+    $editor = new class extends ArticleEditor
+    {
+        /** @param  array<int, array<string, mixed>>  $rows */
+        public function seed(array $rows): void
+        {
+            $this->blockData = $rows;
+        }
+
+        /** @return array<int, string> */
+        public function order(): array
+        {
+            return array_column($this->blockData, 'text');
+        }
+    };
+
+    $rows = fn () => [
+        ['type' => 'text', 'text' => 'A'],
+        ['type' => 'text', 'text' => 'B'],
+        ['type' => 'text', 'text' => 'C'],
+    ];
+
+    // Dolů: mezera se počítá v poli **před** vyjmutím, takže „za C" je 3.
+    $editor->seed($rows());
+    $editor->moveBlockTo(0, 3);
+    expect($editor->order())->toBe(['B', 'C', 'A']);
+
+    // Nahoru: index mezery se vyjmutím neposouvá.
+    $editor->seed($rows());
+    $editor->moveBlockTo(2, 0);
+    expect($editor->order())->toBe(['C', 'A', 'B']);
+
+    // Puštění na vlastní místo nic nepřeskládá.
+    $editor->seed($rows());
+    $editor->moveBlockTo(1, 1);
+    expect($editor->order())->toBe(['A', 'B', 'C']);
+});

@@ -318,6 +318,29 @@ class ArticleEditor extends Component
         array_splice($this->blockData, $index + 1, 0, [$this->blockData[$index]]);
     }
 
+    /**
+     * Přesune blok na místo `$gap` (0..n, počítáno v poli **před** vyjmutím).
+     *
+     * Volá to přetažení; tlačítka ↑↓ zůstávají, protože bez myši by jinak
+     * pořadí nešlo změnit vůbec.
+     */
+    public function moveBlockTo(int $from, int $gap): void
+    {
+        if (! isset($this->blockData[$from])) {
+            return;
+        }
+
+        $block = $this->blockData[$from];
+
+        array_splice($this->blockData, $from, 1);
+
+        // Vyjmutí posunulo všechno za původní pozicí o jedna doleva, takže
+        // mezera za ním má po vyjmutí o jedna nižší index.
+        $target = $gap > $from ? $gap - 1 : $gap;
+
+        array_splice($this->blockData, max(0, $target), 0, [$block]);
+    }
+
     public function removeBlock(int $index): void
     {
         unset($this->blockData[$index]);
