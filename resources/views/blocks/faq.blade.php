@@ -2,5 +2,5 @@
      prohlížečové hledání i tisk. --}}
 <details class="kb-faq">
     <summary>{{ $data['question'] ?? '' }}</summary>
-    <p>{{ $data['text'] ?? '' }}</p>
+    {!! \NyonCode\KnowledgeBase\Support\Html::prose($data['text'] ?? '') !!}
 </details>

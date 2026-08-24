@@ -13,5 +13,5 @@
     @if (! empty($data['title']))
         <p class="font-semibold">{{ $data['title'] }}</p>
     @endif
-    <p>{{ $data['text'] ?? '' }}</p>
+    {!! \NyonCode\KnowledgeBase\Support\Html::prose($data['text'] ?? '') !!}
 </div>

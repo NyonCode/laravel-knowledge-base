@@ -20,6 +20,30 @@ final class Html
 {
     private static ?HtmlSanitizer $sanitizer = null;
 
+    /**
+     * Text z bloku připravený k vysázení.
+     *
+     * Prozaická pole bloků drží HTML z editoru, jenže starší obsah (a obsah
+     * ze seedu) je holý text. Rozlišuje se podle toho, jestli tam vůbec je
+     * značka: bez ní se zalomení převedou na `<br>` a odstavec se obalí, jinak
+     * by se z napsaných řádků stal jeden slepenec.
+     *
+     * Výsledek stejně prochází {@see self::sanitize()} v rendereru, takže
+     * tohle není bezpečnostní rozhodnutí, jen sázecí.
+     */
+    public static function prose(?string $value): string
+    {
+        $value = trim((string) $value);
+
+        if ($value === '') {
+            return '';
+        }
+
+        return str_contains($value, '<')
+            ? $value
+            : '<p>'.nl2br(e($value)).'</p>';
+    }
+
     public static function sanitize(string $html): string
     {
         return (self::$sanitizer ??= new HtmlSanitizer(self::config()))->sanitize($html);

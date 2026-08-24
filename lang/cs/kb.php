@@ -110,6 +110,12 @@ return [
         'move_up' => 'Nahoru',
         'move_down' => 'Dolů',
         'block' => [
+            'callout_title' => 'Titulek (volitelný)',
+            'language' => 'php, bash, json…',
+            'alt' => 'Popis obrázku',
+            'caption' => 'Popisek',
+            'unknown' => 'Blok typu „:type“ — v téhle instalaci pro něj není editor.',
+            'empty' => 'Prázdné. Přidej první blok níž.',
             'heading' => 'Nadpis',
             'text' => 'Text',
             'list' => 'Seznam',

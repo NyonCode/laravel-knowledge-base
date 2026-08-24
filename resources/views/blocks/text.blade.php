@@ -1,1 +1,1 @@
-<p>{!! nl2br(e($data['text'] ?? '')) !!}</p>
+{!! \NyonCode\KnowledgeBase\Support\Html::prose($data['text'] ?? '') !!}

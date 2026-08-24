@@ -110,6 +110,12 @@ return [
         'move_up' => 'Move up',
         'move_down' => 'Move down',
         'block' => [
+            'callout_title' => 'Title (optional)',
+            'language' => 'php, bash, json…',
+            'alt' => 'Alt text',
+            'caption' => 'Caption',
+            'unknown' => 'Block of type “:type” — no editor for it in this installation.',
+            'empty' => 'Empty. Add the first block below.',
             'heading' => 'Heading',
             'text' => 'Text',
             'list' => 'List',

@@ -401,3 +401,41 @@ it('still refuses a javascript link', function () {
 
     expect($html)->not->toContain('javascript:');
 });
+
+it('renders both plain and rich text in a block the same way', function () {
+    // Starší bloky (a obsah ze seedu) drží holý text, nové HTML z editoru.
+    // Obojí musí vypadat jako odstavec, ne jako slepenec řádků.
+    $render = fn (string $text) => app(RendererRegistry::class)->render(
+        ContentFormat::Blocks,
+        [['type' => 'text', 'data' => ['text' => $text]]]
+    );
+
+    expect($render("První řádek\nDruhý"))->toContain('<br')
+        ->and($render('<p>Už <strong>naformátované</strong></p>'))->toContain('<strong>');
+});
+
+it('sanitises rich text that came from a block', function () {
+    $html = app(RendererRegistry::class)->render(
+        ContentFormat::Blocks,
+        [['type' => 'callout', 'data' => ['text' => '<p onclick="alert(1)">pozor</p>']]]
+    );
+
+    expect($html)->toContain('pozor')->not->toContain('onclick');
+});
+
+it('names every offered block type in every language', function (string $locale) {
+    // Přesně tohle se rozbilo při rozšiřování sady: přepsané pole překladů
+    // zahodilo půlku klíčů a v editoru se ukázaly syrové identifikátory.
+    // Chybějící překlad nespadne, jen ošklivě vypadá — proto test.
+    app()->setLocale($locale);
+
+    $missing = collect(config('knowledge-base.editors.blocks.types'))
+        ->flatten()
+        ->flatMap(fn (string $type) => [
+            'kb.editor.block.'.$type,
+            'kb.editor.block_hint.'.$type,
+        ])
+        ->reject(fn (string $key) => __('knowledge-base::'.$key) !== 'knowledge-base::'.$key);
+
+    expect($missing->all())->toBe([]);
+})->with(['cs', 'en']);
