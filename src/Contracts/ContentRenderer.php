@@ -23,7 +23,7 @@ interface ContentRenderer
     public function supports(ContentFormat $format): bool;
 
     /**
-     * @param  string|array<mixed>  $content  markdown, HTML, or decoded blocks
+     * @param  string|array<array-key, mixed>  $content  markdown, HTML, or decoded blocks
      */
     public function render(string|array $content): string;
 

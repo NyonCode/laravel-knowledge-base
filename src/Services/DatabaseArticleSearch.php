@@ -6,11 +6,13 @@ namespace NyonCode\KnowledgeBase\Services;
 
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use NyonCode\KnowledgeBase\Contracts\ArticleSearch;
 use NyonCode\KnowledgeBase\Contracts\KnowledgeAudience;
 use NyonCode\KnowledgeBase\Models\Article;
+use NyonCode\KnowledgeBase\Support\Settings;
 
 /**
  * Search without a search server.
@@ -31,6 +33,9 @@ final class DatabaseArticleSearch implements ArticleSearch
 {
     public function __construct(private readonly KnowledgeAudience $audience) {}
 
+    /**
+     * @return Collection<int, Article>
+     */
     public function search(
         string $term,
         ?Authenticatable $reader = null,
@@ -39,7 +44,10 @@ final class DatabaseArticleSearch implements ArticleSearch
         $terms = $this->terms($term);
 
         if ($terms === []) {
-            return collect();
+            /** @var EloquentCollection<int, Article> $empty */
+            $empty = new EloquentCollection;
+
+            return $empty;
         }
 
         $query = Article::query()->with('category');
@@ -59,11 +67,14 @@ final class DatabaseArticleSearch implements ArticleSearch
 
         [$relevance, $bindings] = $this->relevance($terms);
 
-        return $query
+        /** @var EloquentCollection<int, Article> $results */
+        $results = $query
             ->orderByRaw($relevance.' desc', $bindings)
             ->orderByDesc('views_count')
             ->limit($limit)
             ->get();
+
+        return $results;
     }
 
     /**
@@ -73,12 +84,12 @@ final class DatabaseArticleSearch implements ArticleSearch
      */
     private function terms(string $term): array
     {
-        $min = (int) config('knowledge-base.search.min_length', 2);
+        $min = Settings::int('search.min_length', 2);
 
         preg_match_all('/"([^"]+)"|(\S+)/u', trim($term), $matches, PREG_SET_ORDER);
 
         return collect($matches)
-            ->map(static fn (array $m): string => trim($m[1] !== '' ? $m[1] : ($m[2] ?? '')))
+            ->map(static fn (array $m): string => trim(($m[1] ?? '') !== '' ? $m[1] : ($m[2] ?? '')))
             ->filter(static fn (string $word): bool => Str::length($word) >= $min)
             ->unique()
             ->values()
@@ -94,18 +105,16 @@ final class DatabaseArticleSearch implements ArticleSearch
      * injectable as a WHERE.
      *
      * @param  array<int, string>  $terms
-     * @return array{0: string, 1: array<int, scalar>}
+     * @return array{0: literal-string, 1: array<int, scalar>}
      */
     private function relevance(array $terms): array
     {
         /** @var array<string, int> $weights */
-        $weights = config('knowledge-base.search.weights', [
-            'title' => 10,
-            'excerpt' => 4,
-            'body' => 1,
-        ]);
+        $weights = Settings::weights('search.weights');
 
+        /** @var list<literal-string> $parts */
         $parts = [];
+        /** @var list<scalar> $bindings */
         $bindings = [];
 
         foreach ($terms as $word) {
@@ -121,7 +130,15 @@ final class DatabaseArticleSearch implements ArticleSearch
         return [implode(' + ', $parts), $bindings];
     }
 
-    /** Whitelist of orderable columns — config is trusted, but not blindly. */
+    /**
+     * Whitelist of orderable columns — config is trusted, but not blindly.
+     *
+     * Returns a literal so the assembled ORDER BY stays a literal string: the
+     * only values that ever reach the SQL are these three, everything the
+     * visitor typed goes through a binding.
+     *
+     * @return literal-string
+     */
     private function column(string $name): string
     {
         return in_array($name, ['title', 'excerpt', 'body'], true)

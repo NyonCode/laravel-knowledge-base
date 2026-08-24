@@ -6,6 +6,7 @@ namespace NyonCode\KnowledgeBase\Editors;
 
 use NyonCode\KnowledgeBase\Contracts\EditorDriver;
 use NyonCode\KnowledgeBase\Enums\ContentFormat;
+use NyonCode\KnowledgeBase\Support\Settings;
 
 /**
  * A TipTap surface, for authors who will not write markdown.
@@ -45,6 +46,6 @@ final class RichTextEditor implements EditorDriver
     {
         // The host says so explicitly rather than the package guessing from an
         // asset path — the bundle can live anywhere, or be provided by a CDN.
-        return (bool) config('knowledge-base.editors.tiptap.bundled', false);
+        return Settings::bool('editors.tiptap.bundled');
     }
 }

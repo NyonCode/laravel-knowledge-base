@@ -29,7 +29,7 @@ final class Layouts
 
     private static function apply(View $view, string $surface): View
     {
-        $layout = config("knowledge-base.layouts.{$surface}");
+        $layout = Settings::nullableString("layouts.{$surface}");
 
         return blank($layout) ? $view : $view->layout((string) $layout);
     }

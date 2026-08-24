@@ -26,6 +26,7 @@ final class RichTextRenderer implements ContentRenderer
         return $format === ContentFormat::RichText;
     }
 
+    /** @param  string|array<array-key, mixed>  $content */
     public function render(string|array $content): string
     {
         if (is_array($content)) {

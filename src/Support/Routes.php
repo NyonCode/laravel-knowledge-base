@@ -39,19 +39,24 @@ final class Routes
 
     public static function adminIndex(): string
     {
-        return self::to((string) config('knowledge-base.routes.admin.index'));
+        return self::to(Settings::string('routes.admin.index'));
+    }
+
+    public static function adminCategories(): string
+    {
+        return self::to(Settings::string('routes.admin.categories'));
     }
 
     public static function adminEdit(?Article $article = null): string
     {
         return $article === null
-            ? self::to((string) config('knowledge-base.routes.admin.create'))
-            : self::to((string) config('knowledge-base.routes.admin.edit'), $article);
+            ? self::to(Settings::string('routes.admin.create'))
+            : self::to(Settings::string('routes.admin.edit'), $article);
     }
 
     private static function readName(string $suffix): string
     {
-        return (string) config('knowledge-base.routes.name', 'knowledge.').$suffix;
+        return Settings::string('routes.name', 'knowledge.').$suffix;
     }
 
     private static function to(string $name, mixed $parameters = []): string

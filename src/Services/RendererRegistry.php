@@ -52,7 +52,7 @@ final class RendererRegistry
         );
     }
 
-    /** @param  string|array<mixed>  $content */
+    /** @param  string|array<array-key, mixed>  $content */
     public function render(ContentFormat $format, string|array $content): string
     {
         return $this->for($format)->render($content);

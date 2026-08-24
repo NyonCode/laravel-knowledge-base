@@ -31,6 +31,7 @@ return [
             'index' => 'admin.knowledge',
             'create' => 'admin.knowledge-create',
             'edit' => 'admin.knowledge-edit',
+            'categories' => 'admin.knowledge-categories',
         ],
     ],
 

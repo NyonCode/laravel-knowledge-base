@@ -29,6 +29,7 @@ final class BlockRenderer implements ContentRenderer
         return $format === ContentFormat::Blocks;
     }
 
+    /** @param  string|array<array-key, mixed>  $content */
     public function render(string|array $content): string
     {
         $blocks = is_string($content)
@@ -46,7 +47,13 @@ final class BlockRenderer implements ContentRenderer
                 continue;
             }
 
-            $view = 'knowledge-base::blocks.'.(string) $block['type'];
+            $type = $block['type'];
+
+            if (! is_string($type)) {
+                continue;
+            }
+
+            $view = 'knowledge-base::blocks.'.$type;
 
             if (! $this->views->exists($view)) {
                 continue;

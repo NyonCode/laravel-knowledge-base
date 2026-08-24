@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace NyonCode\KnowledgeBase\Services;
 
 use Illuminate\Contracts\Auth\Authenticatable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Collection;
 use NyonCode\KnowledgeBase\Contracts\ArticleSearch;
 use NyonCode\KnowledgeBase\Contracts\KnowledgeAudience;
@@ -14,7 +16,9 @@ use NyonCode\KnowledgeBase\Enums\ContentFormat;
 use NyonCode\KnowledgeBase\Models\Article;
 use NyonCode\KnowledgeBase\Models\ArticleFeedback;
 use NyonCode\KnowledgeBase\Models\Category;
+use NyonCode\KnowledgeBase\Support\Cast;
 use NyonCode\KnowledgeBase\Support\ReaderFingerprint;
+use NyonCode\KnowledgeBase\Support\Settings;
 
 /**
  * The knowledge base as one object.
@@ -48,9 +52,9 @@ final class KnowledgeBase
         return Category::query()
             ->roots()
             ->ordered()
-            ->with(['children' => fn ($q) => $q->orderBy('sort_order')])
+            ->with(['children' => static fn (Relation $q) => $q->orderBy('sort_order')])
             ->withCount([
-                'articles as readable_articles_count' => fn ($q) => $this
+                'articles as readable_articles_count' => fn (Builder $q) => $this
                     ->audience
                     ->scopeVisible($q, $reader),
             ])
@@ -84,7 +88,7 @@ final class KnowledgeBase
         return $this->search->search(
             $term,
             $reader,
-            (int) config('knowledge-base.search.limit', 20)
+            Settings::int('search.limit', 20)
         );
     }
 
@@ -151,13 +155,13 @@ final class KnowledgeBase
             $article->body_html = $this->renderers->render(
                 $format,
                 $format->isStructured()
-                    ? (json_decode((string) $article->body, true) ?: [])
+                    ? self::decodeBlocks((string) $article->body)
                     : (string) $article->body
             );
         }
 
         if ($editor !== null && blank($article->author_id)) {
-            $article->author_id = $editor->getAuthIdentifier();
+            $article->author_id = Cast::int($editor->getAuthIdentifier());
         }
 
         // Publishing stamps the date once. Re-saving a published article is an
@@ -226,6 +230,14 @@ final class KnowledgeBase
 
     // --- Internals -----------------------------------------------------------
 
+    /** @return array<int, mixed> */
+    private static function decodeBlocks(string $body): array
+    {
+        $decoded = json_decode($body, true);
+
+        return is_array($decoded) ? array_values($decoded) : [];
+    }
+
     /** @param  array<string, mixed>  $attributes */
     private function changesBody(Article $article, array $attributes): bool
     {
@@ -245,7 +257,7 @@ final class KnowledgeBase
 
     private function pruneRevisions(Article $article): void
     {
-        $keep = config('knowledge-base.authoring.max_revisions');
+        $keep = Settings::nullableInt('authoring.max_revisions');
 
         if ($keep === null) {
             return;

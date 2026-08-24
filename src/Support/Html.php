@@ -66,14 +66,14 @@ final class Html
             PREG_SET_ORDER
         );
 
-        return array_values(array_map(
+        return array_map(
             static fn (array $m): array => [
                 'level' => (int) $m[1],
                 'id' => $m[2],
                 'title' => trim(html_entity_decode(strip_tags($m[3]), ENT_QUOTES | ENT_HTML5)),
             ],
             $matches
-        ));
+        );
     }
 
     private static function config(): HtmlSanitizerConfig

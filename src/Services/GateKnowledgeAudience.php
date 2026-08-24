@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Builder;
 use NyonCode\KnowledgeBase\Contracts\KnowledgeAudience;
 use NyonCode\KnowledgeBase\Enums\ArticleStatus;
 use NyonCode\KnowledgeBase\Enums\Visibility;
+use NyonCode\KnowledgeBase\Support\Settings;
 
 /**
  * The default audience: public pages for everyone, internal pages behind an
@@ -30,7 +31,7 @@ final class GateKnowledgeAudience implements KnowledgeAudience
             return false;
         }
 
-        $ability = (string) config('knowledge-base.audience.internal_ability');
+        $ability = Settings::string('audience.internal_ability');
 
         // `has()` first: `allows()` on an undefined ability answers false, and
         // a fresh install would then hide the whole internal base from the one

@@ -40,6 +40,7 @@ final class CommonMarkRenderer implements ContentRenderer, MarkdownRenderer
         return $format === ContentFormat::Markdown;
     }
 
+    /** @param  string|array<array-key, mixed>  $content */
     public function render(string|array $content): string
     {
         // Blocks never reach here; a defensive cast beats a TypeError in a view.
@@ -61,7 +62,7 @@ final class CommonMarkRenderer implements ContentRenderer, MarkdownRenderer
             PREG_SET_ORDER
         );
 
-        return array_values(array_map(
+        return array_map(
             static fn (array $m): array => [
                 'level' => (int) $m[1],
                 'id' => $m[2],
@@ -71,7 +72,7 @@ final class CommonMarkRenderer implements ContentRenderer, MarkdownRenderer
                 )),
             ],
             $matches
-        ));
+        );
     }
 
     private function converter(): MarkdownConverter

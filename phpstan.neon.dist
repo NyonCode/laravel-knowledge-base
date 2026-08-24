@@ -7,3 +7,21 @@ parameters:
     level: max
     tmpDir: .phpstan
     treatPhpDocTypesAsCertain: true
+
+    ignoreErrors:
+        # Livewire přidává `title()` a `layout()` na View jako makra. PHPStan
+        # makra nevidí a stub pro ně neexistuje; volání jsou správná a chráněná
+        # testy, které komponenty skutečně vykreslují.
+        -
+            identifier: method.notFound
+            message: '#Call to an undefined method Illuminate\\Contracts\\View\\View::(title|layout)\(\)#'
+        -
+            identifier: return.type
+            message: '#should return Illuminate\\Contracts\\View\\View but returns mixed#'
+
+        # `view-string` umí PHPStan ověřit jen u views, na které vidí. Views
+        # balíčku se registrují za běhu přes namespace `knowledge-base::`,
+        # takže je staticky ověřit nelze.
+        -
+            identifier: argument.type
+            message: '#Parameter \#1 \$view of function view expects view-string\|null, string given#'

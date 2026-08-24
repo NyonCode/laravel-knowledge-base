@@ -23,7 +23,7 @@ final class ReaderFingerprint
     public static function make(?Authenticatable $reader = null): string
     {
         if ($reader !== null) {
-            return hash('sha256', 'user:'.$reader->getAuthIdentifier().'|'.config('app.key'));
+            return hash('sha256', 'user:'.Cast::string($reader->getAuthIdentifier()).'|'.self::key());
         }
 
         $session = Request::hasSession() ? Request::session()->getId() : '';
@@ -32,7 +32,14 @@ final class ReaderFingerprint
             'guest',
             $session,
             Request::ip() ?? '',
-            config('app.key'),
+            self::key(),
         ]));
+    }
+
+    private static function key(): string
+    {
+        $key = config('app.key');
+
+        return is_string($key) ? $key : '';
     }
 }

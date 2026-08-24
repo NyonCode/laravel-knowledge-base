@@ -155,3 +155,14 @@ it('only counts articles a reader may actually open in the category tally', func
 
     expect(kb()->categories()->first()->readable_articles_count)->toBe(1);
 });
+
+it('keeps articles when their category is deleted', function () {
+    // Smazat kategorii je uklizení polic, ne vyhození knih.
+    $category = Category::factory()->create();
+    $article = Article::factory()->for($category)->create();
+
+    $category->delete();
+
+    expect($article->fresh())->not->toBeNull()
+        ->and($article->fresh()->category_id)->toBeNull();
+});

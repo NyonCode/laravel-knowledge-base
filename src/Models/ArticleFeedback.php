@@ -7,12 +7,17 @@ namespace NyonCode\KnowledgeBase\Models;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use NyonCode\KnowledgeBase\Support\Settings;
 
 /**
  * One reader's verdict on one article.
  *
+ * @property int $id
+ * @property int $article_id
+ * @property int|null $user_id
  * @property bool $helpful
  * @property string|null $comment
+ * @property string|null $reader_hash
  */
 class ArticleFeedback extends Model
 {
@@ -24,9 +29,10 @@ class ArticleFeedback extends Model
 
     public function getTable(): string
     {
-        return config('knowledge-base.tables.feedback', 'kb_article_feedback');
+        return Settings::string('tables.feedback', 'kb_article_feedback');
     }
 
+    /** @return BelongsTo<Article, $this> */
     public function article(): BelongsTo
     {
         return $this->belongsTo(Article::class, 'article_id');

@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace NyonCode\KnowledgeBase\Providers;
 
+use Illuminate\Contracts\Foundation\Application;
 use Livewire\Livewire;
 use NyonCode\KnowledgeBase\Contracts\ArticleSearch;
+use NyonCode\KnowledgeBase\Contracts\EditorDriver;
 use NyonCode\KnowledgeBase\Contracts\KnowledgeAudience;
 use NyonCode\KnowledgeBase\Contracts\MarkdownRenderer;
 use NyonCode\KnowledgeBase\Livewire\Admin\ArticleEditor;
 use NyonCode\KnowledgeBase\Livewire\Admin\ArticleList;
+use NyonCode\KnowledgeBase\Livewire\Admin\CategoryList;
 use NyonCode\KnowledgeBase\Livewire\ArticlePage;
 use NyonCode\KnowledgeBase\Livewire\CategoryPage;
 use NyonCode\KnowledgeBase\Livewire\KnowledgeHome;
@@ -22,6 +25,7 @@ use NyonCode\KnowledgeBase\Services\KnowledgeBase;
 use NyonCode\KnowledgeBase\Services\RendererRegistry;
 use NyonCode\KnowledgeBase\Services\Renderers\BlockRenderer;
 use NyonCode\KnowledgeBase\Services\Renderers\RichTextRenderer;
+use NyonCode\KnowledgeBase\Support\Settings;
 use NyonCode\LaravelPackageToolkit\Contracts\Packable;
 use NyonCode\LaravelPackageToolkit\Packager;
 use NyonCode\LaravelPackageToolkit\PackageServiceProvider;
@@ -56,16 +60,23 @@ final class KnowledgeBaseServiceProvider extends PackageServiceProvider implemen
                 // One renderer per format. Registered last wins, so a host that
                 // binds its own markdown renderer (to run a highlighter, say)
                 // simply registers after these.
-                $this->app->singleton(RendererRegistry::class, fn ($app) => new RendererRegistry([
+                $this->app->singleton(RendererRegistry::class, fn (Application $app) => new RendererRegistry([
                     $app->make(CommonMarkRenderer::class),
                     $app->make(RichTextRenderer::class),
                     $app->make(BlockRenderer::class),
                 ]));
 
-                $this->app->singleton(EditorRegistry::class, fn ($app) => new EditorRegistry(
-                    collect((array) config('knowledge-base.editors.drivers', []))
-                        ->map(fn (string $driver) => $app->make($driver))
-                        ->all()
+                $this->app->singleton(EditorRegistry::class, fn (Application $app) => new EditorRegistry(
+                    array_values(array_filter(array_map(
+                        static function (string $driver) use ($app): ?EditorDriver {
+                            $resolved = $app->make($driver);
+
+                            // Konfigurace je text; třída, která kontrakt
+                            // nesplňuje, se přeskočí a nezhroutí start.
+                            return $resolved instanceof EditorDriver ? $resolved : null;
+                        },
+                        Settings::strings('editors.drivers')
+                    )))
                 ));
 
                 $this->app->singleton(KnowledgeBase::class);
@@ -94,6 +105,7 @@ final class KnowledgeBaseServiceProvider extends PackageServiceProvider implemen
             'kb.article' => ArticlePage::class,
             'kb.admin.articles' => ArticleList::class,
             'kb.admin.editor' => ArticleEditor::class,
+            'kb.admin.categories' => CategoryList::class,
         ] as $name => $class) {
             Livewire::component($name, $class);
         }

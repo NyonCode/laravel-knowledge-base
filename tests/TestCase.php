@@ -36,6 +36,10 @@ abstract class TestCase extends Orchestra
             'driver' => 'sqlite',
             'database' => ':memory:',
             'prefix' => '',
+            // Bez tohohle SQLite cizí klíče **nevynucuje** a `nullOnDelete`
+            // se mlčky nestane – testy by pak tvrdily opak toho, co dělá
+            // MySQL v provozu.
+            'foreign_key_constraints' => true,
         ]);
     }
 }

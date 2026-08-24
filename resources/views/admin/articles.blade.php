@@ -10,9 +10,14 @@
                 · {{ $counts['draft'] }} × {{ __('knowledge-base::kb.status.draft') }}
             </p>
         </div>
-        <a href="{{ \NyonCode\KnowledgeBase\Support\Routes::adminEdit() }}" wire:navigate class="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white dark:bg-white dark:text-zinc-900">
-            {{ __('knowledge-base::kb.admin.new') }}
-        </a>
+        <div class="flex items-center gap-2">
+            <a href="{{ \NyonCode\KnowledgeBase\Support\Routes::adminCategories() }}" wire:navigate class="rounded-lg border border-zinc-300 px-3 py-2 text-sm font-medium text-zinc-700 dark:border-zinc-700 dark:text-zinc-200">
+                {{ __('knowledge-base::kb.admin.categories') }}
+            </a>
+            <a href="{{ \NyonCode\KnowledgeBase\Support\Routes::adminEdit() }}" wire:navigate class="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white dark:bg-white dark:text-zinc-900">
+                {{ __('knowledge-base::kb.admin.new') }}
+            </a>
+        </div>
     </div>
 
     <div class="mt-6 flex flex-wrap gap-2">

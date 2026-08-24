@@ -10,6 +10,7 @@ use NyonCode\KnowledgeBase\Models\Article;
 use NyonCode\KnowledgeBase\Services\KnowledgeBase;
 use NyonCode\KnowledgeBase\Services\RendererRegistry;
 use NyonCode\KnowledgeBase\Support\Layouts;
+use NyonCode\KnowledgeBase\Support\Settings;
 
 /**
  * The page people actually came for.
@@ -70,7 +71,7 @@ class ArticlePage extends Component
             reader: auth()->user()
         );
 
-        $this->askingWhy = (bool) config('knowledge-base.feedback.ask_why', true);
+        $this->askingWhy = Settings::bool('feedback.ask_why', true);
     }
 
     public function sendComment(KnowledgeBase $kb): void

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace NyonCode\KnowledgeBase\Models;
 
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -16,6 +17,7 @@ use NyonCode\KnowledgeBase\Enums\ArticleKind;
 use NyonCode\KnowledgeBase\Enums\ArticleStatus;
 use NyonCode\KnowledgeBase\Enums\ContentFormat;
 use NyonCode\KnowledgeBase\Enums\Visibility;
+use NyonCode\KnowledgeBase\Support\Settings;
 
 /**
  * One page of the knowledge base.
@@ -24,12 +26,29 @@ use NyonCode\KnowledgeBase\Enums\Visibility;
  * because pages are read far more often than written (see the migration).
  *
  * @property int $id
+ * @property int|null $category_id
  * @property string $slug
  * @property string $title
+ * @property string|null $excerpt
+ * @property string|null $body
+ * @property string|null $body_html
  * @property ArticleKind $kind
  * @property ContentFormat $format
  * @property ArticleStatus $status
  * @property Visibility $visibility
+ * @property int|null $author_id
+ * @property Carbon|null $published_at
+ * @property Carbon|null $reviewed_at
+ * @property int|null $review_interval_days
+ * @property int $views_count
+ * @property int $helpful_count
+ * @property int $unhelpful_count
+ * @property int $sort_order
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property-read Category|null $category
+ * @property-read Collection<int, ArticleRevision> $revisions
+ * @property-read Collection<int, ArticleFeedback> $feedback
  */
 class Article extends Model
 {
@@ -54,7 +73,7 @@ class Article extends Model
 
     public function getTable(): string
     {
-        return config('knowledge-base.tables.articles', 'kb_articles');
+        return Settings::string('tables.articles', 'kb_articles');
     }
 
     protected static function booted(): void
@@ -76,36 +95,28 @@ class Article extends Model
         return 'slug';
     }
 
+    /** @return BelongsTo<Category, $this> */
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class, 'category_id');
     }
 
+    /** @return HasMany<ArticleRevision, $this> */
     public function revisions(): HasMany
     {
         return $this->hasMany(ArticleRevision::class, 'article_id')->latest('id');
     }
 
+    /** @return HasMany<ArticleFeedback, $this> */
     public function feedback(): HasMany
     {
         return $this->hasMany(ArticleFeedback::class, 'article_id');
     }
 
+    /** @return BelongsTo<Model, $this> */
     public function author(): BelongsTo
     {
-        return $this->belongsTo($this->userModel(), 'author_id');
-    }
-
-    /** @return class-string<Model> */
-    protected function userModel(): string
-    {
-        /** @var class-string<Model>|null $configured */
-        $configured = config('knowledge-base.models.user');
-
-        /** @var class-string<Model> $default */
-        $default = config('auth.providers.users.model', 'App\\Models\\User');
-
-        return $configured ?? $default;
+        return $this->belongsTo(Settings::userModel(), 'author_id');
     }
 
     // --- Reading -------------------------------------------------------------
@@ -132,7 +143,7 @@ class Article extends Model
     public function isStale(): bool
     {
         $interval = $this->review_interval_days
-            ?? config('knowledge-base.authoring.review_interval_days');
+            ?? Settings::nullableInt('authoring.review_interval_days');
 
         if ($interval === null) {
             return false;
@@ -147,7 +158,7 @@ class Article extends Model
     public function reviewDueAt(): ?Carbon
     {
         $interval = $this->review_interval_days
-            ?? config('knowledge-base.authoring.review_interval_days');
+            ?? Settings::nullableInt('authoring.review_interval_days');
 
         $checked = $this->reviewed_at ?? $this->published_at;
 
@@ -233,7 +244,7 @@ class Article extends Model
      */
     public function scopeStale(Builder $query): void
     {
-        $interval = (int) (config('knowledge-base.authoring.review_interval_days') ?? 0);
+        $interval = (int) (Settings::nullableInt('authoring.review_interval_days') ?? 0);
 
         if ($interval <= 0) {
             // No clock configured: nothing is stale, and an unfiltered query

@@ -18,7 +18,9 @@ use NyonCode\KnowledgeBase\Models\Category;
 use NyonCode\KnowledgeBase\Services\EditorRegistry;
 use NyonCode\KnowledgeBase\Services\KnowledgeBase;
 use NyonCode\KnowledgeBase\Services\RendererRegistry;
+use NyonCode\KnowledgeBase\Support\Cast;
 use NyonCode\KnowledgeBase\Support\Layouts;
+use NyonCode\KnowledgeBase\Support\Settings;
 
 /**
  * Write an article.
@@ -74,10 +76,7 @@ class ArticleEditor extends Component
 
         $this->editor = $editors->default()->name();
 
-        $this->visibility = (string) config(
-            'knowledge-base.authoring.default_visibility',
-            Visibility::Internal->value
-        );
+        $this->visibility = Settings::string('authoring.default_visibility', Visibility::Internal->value);
 
         if ($article?->exists) {
             $this->article = $article;
@@ -110,19 +109,20 @@ class ArticleEditor extends Component
 
     public function save(KnowledgeBase $kb): void
     {
+        /** @var array<string, mixed> $data */
         $data = $this->validate();
 
         $article = $kb->save(
             $this->article ?? new Article,
             [
-                'title' => $data['title'],
-                'slug' => $data['slug'],
-                'excerpt' => $data['excerpt'] ?: null,
-                'body' => $data['body'],
-                'category_id' => $data['categoryId'],
-                'kind' => $data['kind'],
-                'status' => $data['status'],
-                'visibility' => $data['visibility'],
+                'title' => Cast::string($data['title']),
+                'slug' => Cast::string($data['slug']),
+                'excerpt' => Cast::nullableString($data['excerpt']),
+                'body' => Cast::string($data['body']),
+                'category_id' => Cast::nullableInt($data['categoryId']),
+                'kind' => Cast::string($data['kind']),
+                'status' => Cast::string($data['status']),
+                'visibility' => Cast::string($data['visibility']),
                 'format' => app(EditorRegistry::class)->get($this->editor)?->format()
                     ?? ContentFormat::Markdown,
             ],
@@ -172,12 +172,12 @@ class ArticleEditor extends Component
         $this->body = (string) json_encode(array_values($blocks));
     }
 
-    /** @return array<int, array{type: string, data: array<string, mixed>}> */
+    /** @return array<int, mixed> */
     protected function blocks(): array
     {
         $decoded = json_decode($this->body, true);
 
-        return is_array($decoded) ? $decoded : [];
+        return is_array($decoded) ? array_values($decoded) : [];
     }
 
     /** Say "still true" without editing a word. */
@@ -200,7 +200,7 @@ class ArticleEditor extends Component
                 'max:200',
                 'regex:/^[a-z0-9]+(?:-[a-z0-9]+)*$/',
                 Rule::unique(
-                    config('knowledge-base.tables.articles'),
+                    Settings::string('tables.articles', 'kb_articles'),
                     'slug'
                 )->ignore($this->article?->getKey()),
             ],
@@ -208,7 +208,7 @@ class ArticleEditor extends Component
             'body' => ['required', 'string'],
             'categoryId' => [
                 'nullable',
-                Rule::exists(config('knowledge-base.tables.categories'), 'id'),
+                Rule::exists(Settings::string('tables.categories', 'kb_categories'), 'id'),
             ],
             'kind' => ['required', Rule::enum(ArticleKind::class)],
             'status' => ['required', Rule::enum(ArticleStatus::class)],
@@ -231,7 +231,7 @@ class ArticleEditor extends Component
                 ? $renderers->render(
                     $driver->format(),
                     $driver->format()->isStructured()
-                        ? (json_decode($this->body, true) ?: [])
+                        ? $this->blocks()
                         : $this->body
                 )
                 : null,
