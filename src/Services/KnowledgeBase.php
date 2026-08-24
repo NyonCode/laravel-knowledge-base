@@ -186,6 +186,48 @@ final class KnowledgeBase
         return $article;
     }
 
+    /**
+     * Vykreslí článek znovu z jeho zdroje.
+     *
+     * `save()` překresluje jen při změně těla, což je správně — jenže když se
+     * změní **renderer** (jiný sanitizér, opravený partial, zapnutý
+     * zvýrazňovač), uložené HTML zůstane staré a nic na to neupozorní.
+     * Tohle je ta cesta, jak to srovnat, aniž by se sahalo na obsah.
+     *
+     * Zapisuje potichu: překreslení není úprava článku a nemá mu hýbat
+     * `updated_at` ani hodinami kontroly.
+     */
+    public function rerender(Article $article): void
+    {
+        $format = $article->format ?? ContentFormat::Markdown;
+
+        $article->forceFill([
+            'body_html' => $this->renderers->render(
+                $format,
+                $format->isStructured()
+                    ? self::decodeBlocks((string) $article->body)
+                    : (string) $article->body
+            ),
+        ])->saveQuietly();
+    }
+
+    /**
+     * Překreslí celou bázi. Vrací počet článků.
+     */
+    public function rerenderAll(): int
+    {
+        $count = 0;
+
+        Article::query()->chunkById(100, function ($articles) use (&$count) {
+            foreach ($articles as $article) {
+                $this->rerender($article);
+                $count++;
+            }
+        });
+
+        return $count;
+    }
+
     /** Mark an article as still true today. */
     public function markReviewed(Article $article): void
     {

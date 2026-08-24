@@ -13,6 +13,7 @@ use NyonCode\KnowledgeBase\Models\Category;
 use NyonCode\KnowledgeBase\Services\CommonMarkRenderer;
 use NyonCode\KnowledgeBase\Services\KnowledgeBase;
 use NyonCode\KnowledgeBase\Services\RendererRegistry;
+use NyonCode\KnowledgeBase\Support\MarkdownToBlocks;
 
 /*
  * The three things that decide whether a knowledge base is trustworthy:
@@ -476,4 +477,102 @@ it('moves a block into the gap the reader dropped it on', function () {
     $editor->seed($rows());
     $editor->moveBlockTo(1, 1);
     expect($editor->order())->toBe(['A', 'B', 'C']);
+});
+
+it('converts markdown into the block schema', function () {
+    $blocks = (new MarkdownToBlocks)->convert(<<<'MD'
+        ## Nadpis
+
+        Odstavec s **tučným** a [odkazem](/napoveda/x).
+
+        - první
+        - druhý
+
+        1. krok jedna
+        2. krok dva
+
+        > citace
+
+        ```php
+        echo 'ahoj';
+        ```
+
+        | Stav | Znamená |
+        |---|---|
+        | Open | čeká se |
+
+        ---
+        MD);
+
+    $types = array_column($blocks, 'type');
+
+    expect($types)->toBe(['heading', 'text', 'list', 'steps', 'quote', 'code', 'table', 'divider']);
+
+    // Inline formátování odstavce přežije – prozaické bloky drží HTML.
+    expect($blocks[1]['data']['text'])->toContain('<strong>')->toContain('href="/napoveda/x"');
+
+    expect($blocks[0]['data'])->toBe(['level' => '2', 'text' => 'Nadpis'])
+        ->and($blocks[2]['data']['items'])->toBe(['první', 'druhý'])
+        ->and($blocks[3]['data']['items'])->toBe(['krok jedna', 'krok dva'])
+        ->and($blocks[5]['data']['language'])->toBe('php')
+        ->and($blocks[6]['data']['rows'])->toBe("Stav | Znamená\nOpen | čeká se");
+});
+
+it('does not lose a paragraph it has no block for', function () {
+    // Uzel bez vlastního bloku skončí jako text, ne v koši. Ztratit odstavec
+    // při migraci je horší než mít ho v obecnějším bloku.
+    $blocks = (new MarkdownToBlocks)->convert(
+        '<figure><figcaption>vlastní HTML</figcaption></figure>'
+    );
+
+    expect($blocks)->toHaveCount(1)
+        ->and($blocks[0]['type'])->toBe('text')
+        ->and($blocks[0]['data']['text'])->toContain('vlastní HTML');
+});
+
+it('renders converted markdown to the same words it started with', function () {
+    $markdown = "## Postup\n\nNejdřív **tohle**.\n\n1. krok\n2. druhý krok";
+
+    $html = app(RendererRegistry::class)->render(
+        ContentFormat::Blocks,
+        (new MarkdownToBlocks)->convert($markdown)
+    );
+
+    expect($html)->toContain('Postup')
+        ->toContain('<strong>tohle</strong>')
+        ->toContain('druhý krok')
+        ->toContain('<h2 id="postup"');
+});
+
+it('keeps a link that lives inside a list item', function () {
+    // Položky seznamu nesou inline formátování. Escapovaný výpis z odkazu
+    // udělal text a v článku to nikdo nepozná bez kliknutí.
+    $html = app(RendererRegistry::class)->render(
+        ContentFormat::Blocks,
+        (new MarkdownToBlocks)->convert(
+            "- [Jak vydat verzi](/napoveda/vydat-novou-verzi)\n- druhá položka"
+        )
+    );
+
+    expect($html)->toContain('href="/napoveda/vydat-novou-verzi"')
+        ->toContain('druhá položka');
+});
+
+it('re-renders an article without touching its content or its clock', function () {
+    $article = Article::factory()->create([
+        'body' => '## Nadpis',
+        'body_html' => '<p>zastaralé</p>',
+        'format' => ContentFormat::Markdown,
+        'reviewed_at' => now()->subYear(),
+    ]);
+
+    $touched = $article->updated_at;
+
+    kb()->rerender($article);
+
+    expect($article->fresh()->body_html)->toContain('<h2')
+        ->and($article->fresh()->body)->toBe('## Nadpis')
+        // Překreslení není úprava: nesmí resetovat hodiny kontroly ani
+        // vypadat jako by článek někdo editoval.
+        ->and($article->fresh()->updated_at->timestamp)->toBe($touched->timestamp);
 });
