@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Illuminate\Foundation\Auth\User;
 use NyonCode\KnowledgeBase\Enums\ContentFormat;
 use NyonCode\KnowledgeBase\Models\Article;
 use NyonCode\KnowledgeBase\Models\Category;
@@ -193,4 +194,22 @@ it('does not let two headings of the same name share an anchor', function () {
     );
 
     expect($toc[0]['id'])->not->toBe($toc[1]['id']);
+});
+
+it('does not show an internal category just because one public article sits in it', function () {
+    // Jméno a popis interní kategorie prozrazují, na čem se dělá – viditelnost
+    // kategorie je strop, ne dekorace.
+    $internal = Category::factory()->internal()->create(['name' => 'Interní věci']);
+    Article::factory()->for($internal)->create();
+
+    expect(kb()->categories()->pluck('name'))->not->toContain('Interní věci');
+});
+
+it('shows internal categories to the team', function () {
+    $internal = Category::factory()->internal()->create(['name' => 'Interní věci']);
+    Article::factory()->for($internal)->internal()->create();
+
+    $reader = new class extends User {};
+
+    expect(kb()->categories($reader)->pluck('name'))->toContain('Interní věci');
 });

@@ -49,8 +49,16 @@ final class KnowledgeBase
      */
     public function categories(?Authenticatable $reader = null): EloquentCollection
     {
+        // Viditelnost kategorie je **strop**, ne dekorace: jméno a popis
+        // interní kategorie prozrazují, na čem se dělá, i když je uvnitř
+        // náhodou jeden veřejný článek. Ptá se se proto na ni dřív než na
+        // její obsah — ten článek zůstane dosažitelný odkazem i hledáním.
         return Category::query()
             ->roots()
+            ->unless(
+                $this->audience->canSeeInternal($reader),
+                fn (Builder $query) => $query->public()
+            )
             ->ordered()
             ->with(['children' => static fn (Relation $q) => $q->orderBy('sort_order')])
             ->withCount([
