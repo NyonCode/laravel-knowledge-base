@@ -76,6 +76,7 @@ return [
     ],
 
     'editor' => [
+        'task_list' => 'Task list',
         'align_left' => 'Left',
         'align_center' => 'Centre',
         'align_right' => 'Right',

@@ -93,6 +93,9 @@
 
     <button type="button" x-on:click="run(c => c.toggleBulletList())" :class="active.bullet ? '{{ $on }}' : '{{ $off }}'" class="{{ $btn }}">&bull;</button>
     <button type="button" x-on:click="run(c => c.toggleOrderedList())" :class="active.ordered ? '{{ $on }}' : '{{ $off }}'" class="{{ $btn }}">1.</button>
+    <button type="button" x-on:click="run(c => c.toggleTaskList())" :class="active.task ? '{{ $on }}' : '{{ $off }}'" class="{{ $btn }}" title="{{ __('knowledge-base::kb.editor.task_list') }}">
+        <svg class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m2 6 2 2 4-4M2 14l2 2 4-4M11 6h7M11 15h7" /></svg>
+    </button>
     {{-- Odsazení jde jen uvnitř seznamu, tak se jinde ani nenabízí. --}}
     <button type="button" x-show="active.listItem" x-cloak x-on:click="run(c => c.sinkListItem('listItem'))" class="{{ $btn }} {{ $off }}" title="{{ __('knowledge-base::kb.editor.indent') }}">&rsaquo;&rsaquo;</button>
     <button type="button" x-show="active.listItem" x-cloak x-on:click="run(c => c.liftListItem('listItem'))" class="{{ $btn }} {{ $off }}" title="{{ __('knowledge-base::kb.editor.outdent') }}">&lsaquo;&lsaquo;</button>

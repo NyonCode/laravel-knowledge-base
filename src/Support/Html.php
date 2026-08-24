@@ -163,6 +163,13 @@ final class Html
             ->allowElement('pre', ['class'])
             ->allowElement('code', ['class'])
             ->allowElement('span', ['class', 'style'])
+            // Zaškrtávací seznam z TipTapu. `input` je jediný interaktivní
+            // prvek, který se do článku pouští, a jen jako checkbox — proto
+            // se mu níž **vynucuje** `disabled`.
+            ->allowElement('ul', ['class', 'data-type'])
+            ->allowElement('li', ['class', 'data-checked'])
+            ->allowElement('label')
+            ->allowElement('input', ['type', 'checked', 'disabled'])
             ->allowElement('mark', ['class', 'style'])
             ->allowElement('u')
             ->allowElement('sub')
@@ -189,6 +196,10 @@ final class Html
             ->allowRelativeLinks()
             ->allowRelativeMedias()
             ->allowMediaSchemes(['https', 'http', 'data'])
-            ->allowMediaHosts(null);
+            ->allowMediaHosts(null)
+            // Stav zaškrtnutí se nikam neukládá a nemá: návod čte deset lidí
+            // a odškrtnutí jednoho z nich není pravda pro ostatní. Kdyby šla
+            // políčka klikat, tvářil by se článek, že si to pamatuje.
+            ->forceAttribute('input', 'disabled', 'disabled');
     }
 }

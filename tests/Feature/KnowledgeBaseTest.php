@@ -617,3 +617,23 @@ it('keeps underline, subscript and superscript', function () {
 
     expect($html)->toContain('<u>')->toContain('<sub>')->toContain('<sup>');
 });
+
+it('keeps a task list but never lets the reader tick it', function () {
+    // Stav zaškrtnutí se neukládá – klikatelné políčko by slibovalo paměť,
+    // kterou článek nemá.
+    $html = app(RendererRegistry::class)->render(
+        ContentFormat::RichText,
+        '<ul data-type="taskList">'
+        .'<li data-checked="true"><label><input type="checkbox" checked></label><div><p>hotovo</p></div></li>'
+        .'<li data-checked="false"><label><input type="checkbox"></label><div><p>čeká</p></div></li>'
+        .'</ul>'
+    );
+
+    expect($html)->toContain('data-type="taskList"')
+        ->toContain('data-checked="true"')
+        ->toContain('hotovo')
+        // Ani nezaškrtnuté políčko nesmí jít kliknout – proto se počítá,
+        // že `disabled` dostala **obě**, ne jen to zaškrtnuté.
+        ->and(substr_count($html, '<input'))->toBe(2)
+        ->and(substr_count($html, 'disabled="disabled"'))->toBe(2);
+});

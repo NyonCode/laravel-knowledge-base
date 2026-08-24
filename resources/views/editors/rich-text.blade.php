@@ -52,6 +52,7 @@
                         bullet: this.editor.isActive('bulletList'),
                         ordered: this.editor.isActive('orderedList'),
                         listItem: this.editor.isActive('listItem'),
+                        task: this.editor.isActive('taskList'),
                         quote: this.editor.isActive('blockquote'),
                         codeBlock: this.editor.isActive('codeBlock'),
                         link: this.editor.isActive('link'),

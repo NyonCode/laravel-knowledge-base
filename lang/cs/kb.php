@@ -76,6 +76,7 @@ return [
     ],
 
     'editor' => [
+        'task_list' => 'Zaškrtávací seznam',
         'align_left' => 'Vlevo',
         'align_center' => 'Na střed',
         'align_right' => 'Vpravo',
