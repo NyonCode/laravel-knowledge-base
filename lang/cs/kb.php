@@ -21,7 +21,7 @@ return [
 
     'format' => [
         'markdown' => 'Markdown',
-        'rich-text' => 'Rich text',
+        'rich-text' => 'Textový',
         'blocks' => 'Bloky',
     ],
 
@@ -76,6 +76,9 @@ return [
     ],
 
     'editor' => [
+        'drag_hint' => 'Přetažením změň pořadí',
+        'row' => 'řádek',
+        'column' => 'sloupec',
         'tone_info' => 'Poznámka',
         'tone_success' => 'Tip',
         'tone_warning' => 'Pozor',

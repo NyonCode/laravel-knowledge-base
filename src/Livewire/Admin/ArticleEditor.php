@@ -291,18 +291,6 @@ class ArticleEditor extends Component
         return $groups;
     }
 
-    public function moveBlock(int $index, int $delta): void
-    {
-        $target = $index + $delta;
-
-        if (! isset($this->blockData[$index], $this->blockData[$target])) {
-            return;
-        }
-
-        [$this->blockData[$index], $this->blockData[$target]] =
-            [$this->blockData[$target], $this->blockData[$index]];
-    }
-
     /**
      * Zkopíruje blok pod originál.
      *

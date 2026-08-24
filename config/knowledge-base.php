@@ -134,7 +134,7 @@ return [
     */
 
     'editors' => [
-        'default' => 'markdown',
+        'default' => 'blocks',
 
         'drivers' => [
             MarkdownEditor::class,

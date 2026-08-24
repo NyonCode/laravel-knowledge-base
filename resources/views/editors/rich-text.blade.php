@@ -41,6 +41,8 @@
                         bold: this.editor.isActive('bold'),
                         italic: this.editor.isActive('italic'),
                         code: this.editor.isActive('code'),
+                        strike: this.editor.isActive('strike'),
+                        table: this.editor.isActive('table'),
                         h2: this.editor.isActive('heading', { level: 2 }),
                         h3: this.editor.isActive('heading', { level: 3 }),
                         bullet: this.editor.isActive('bulletList'),
@@ -109,40 +111,7 @@
     x-on:kb-image-picked.window="insertImage($event.detail.url)"
     class="relative overflow-hidden rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900"
 >
-    <div class="flex flex-wrap items-center gap-1 border-b border-zinc-200 bg-zinc-50 px-2 py-1.5 dark:border-zinc-800 dark:bg-zinc-950">
-        @php
-            $btn = 'rounded px-2 py-1 text-xs transition hover:bg-zinc-200 dark:hover:bg-zinc-800';
-            $on = 'bg-zinc-900 text-white hover:bg-zinc-900 dark:bg-white dark:text-zinc-900';
-            $off = 'text-zinc-600 dark:text-zinc-300';
-        @endphp
-
-        <button type="button" x-on:click="run(c => c.toggleHeading({ level: 2 }))" :class="active.h2 ? '{{ $on }}' : '{{ $off }}'" class="{{ $btn }} font-semibold">H2</button>
-        <button type="button" x-on:click="run(c => c.toggleHeading({ level: 3 }))" :class="active.h3 ? '{{ $on }}' : '{{ $off }}'" class="{{ $btn }} font-semibold">H3</button>
-
-        <span class="mx-1 h-4 w-px bg-zinc-300 dark:bg-zinc-700"></span>
-
-        <button type="button" x-on:click="run(c => c.toggleBold())" :class="active.bold ? '{{ $on }}' : '{{ $off }}'" class="{{ $btn }} font-bold">B</button>
-        <button type="button" x-on:click="run(c => c.toggleItalic())" :class="active.italic ? '{{ $on }}' : '{{ $off }}'" class="{{ $btn }} italic">I</button>
-        <button type="button" x-on:click="run(c => c.toggleCode())" :class="active.code ? '{{ $on }}' : '{{ $off }}'" class="{{ $btn }} font-mono">&lt;/&gt;</button>
-
-        <span class="mx-1 h-4 w-px bg-zinc-300 dark:bg-zinc-700"></span>
-
-        <button type="button" x-on:click="run(c => c.toggleBulletList())" :class="active.bullet ? '{{ $on }}' : '{{ $off }}'" class="{{ $btn }}">&bull;&nbsp;{{ __('knowledge-base::kb.editor.list') }}</button>
-        <button type="button" x-on:click="run(c => c.toggleOrderedList())" :class="active.ordered ? '{{ $on }}' : '{{ $off }}'" class="{{ $btn }}">1.</button>
-        <button type="button" x-on:click="run(c => c.toggleBlockquote())" :class="active.quote ? '{{ $on }}' : '{{ $off }}'" class="{{ $btn }}">&ldquo;</button>
-        <button type="button" x-on:click="run(c => c.toggleCodeBlock())" :class="active.codeBlock ? '{{ $on }}' : '{{ $off }}'" class="{{ $btn }} font-mono">```</button>
-
-        <span class="mx-1 h-4 w-px bg-zinc-300 dark:bg-zinc-700"></span>
-
-        <button type="button" x-on:click="link()" :class="active.link ? '{{ $on }}' : '{{ $off }}'" class="{{ $btn }}">{{ __('knowledge-base::kb.editor.link') }}</button>
-        <button type="button" x-on:click="$wire.openImagePicker()" class="{{ $btn }} {{ $off }}">{{ __('knowledge-base::kb.editor.image') }}</button>
-        <button type="button" x-on:click="run(c => c.insertTable({ rows: 3, cols: 3, withHeaderRow: true }))" class="{{ $btn }} {{ $off }}">{{ __('knowledge-base::kb.editor.table') }}</button>
-
-        <span class="ml-auto flex items-center gap-1">
-            <button type="button" x-on:click="run(c => c.undo())" class="{{ $btn }} {{ $off }}" aria-label="{{ __('knowledge-base::kb.editor.undo') }}">&#8630;</button>
-            <button type="button" x-on:click="run(c => c.redo())" class="{{ $btn }} {{ $off }}" aria-label="{{ __('knowledge-base::kb.editor.redo') }}">&#8631;</button>
-        </span>
-    </div>
+    @include('knowledge-base::editors._tiptap-toolbar')
 
     <div wire:ignore x-on:drop="dropped($event)" x-on:dragover.prevent>
         <div

@@ -19,12 +19,30 @@
         dragged: null,
         gap: null,
 
-        start(index) { this.dragged = index },
+        /*
+         * `setData` je povinné. Bez něj Firefox drag vůbec nezahájí a Chrome
+         * ho zahodí při prvním `dragover` — přetahování pak vypadá jako že
+         * nefunguje, a přitom se nikdy nespustilo.
+         */
+        start(event, index) {
+            this.dragged = index
+            this.gap = index
+
+            event.dataTransfer.effectAllowed = 'move'
+            event.dataTransfer.setData('text/plain', String(index))
+
+            // Táhne se obraz **celého bloku**, ne úchytu: jinak se pod
+            // kurzorem veze šest pixelů a není poznat, co se přesouvá.
+            const block = event.target.closest('[data-block]')
+            if (block) {
+                event.dataTransfer.setDragImage(block, 24, 24)
+            }
+        },
 
         /*
-         * Kam blok spadne, ukazuje **mezera, do které se bloky rozestoupí**,
-         * ne zvýraznění cílového bloku: „nad" a „pod" jsou dva různé výsledky
-         * a na obarveném bloku je od sebe nepoznáš. Rozhoduje půlka výšky.
+         * Kam blok spadne, ukazuje **ghost, do kterého se bloky rozestoupí**,
+         * ne obarvený cíl: „nad" a „pod" jsou dva různé výsledky a na
+         * zvýrazněném bloku je od sebe nepoznáš. Rozhoduje půlka výšky.
          */
         over(event, index) {
             if (this.dragged === null) return
@@ -37,7 +55,7 @@
         },
 
         drop() {
-            if (this.dragged !== null && this.gap !== null && this.gap !== this.dragged) {
+            if (this.dragged !== null && this.gap !== null && this.gap !== this.dragged && this.gap !== this.dragged + 1) {
                 $wire.moveBlockTo(this.dragged, this.gap)
             }
 
@@ -46,25 +64,31 @@
 
         reset() { this.dragged = null; this.gap = null },
 
+        dragging() { return this.dragged !== null },
+
         opens(index) { return this.dragged !== null && this.gap === index },
     }"
     x-on:dragend="reset()"
+    x-on:dragover.prevent
     class="space-y-3"
 >
     @forelse ($this->blockData as $index => $block)
         @php $type = $block['type'] ?? 'text'; @endphp
 
-        {{-- Mezera nad blokem – otevře se, jen když se něco táhne. --}}
+        {{-- Ghost: místo, kam blok spadne. V DOM je vždycky, jen má nulovou
+             výšku — element, který teprve vznikne, by pod kurzorem nestihl
+             dostat `dragover` a gesto by se zahodilo. --}}
         <div wire:key="kb-gap-{{ $index }}"
-             x-show="opens({{ $index }})"
              x-on:dragover="over($event, {{ $index }})"
              x-on:drop.prevent="drop()"
-             class="rounded-lg border-2 border-dashed border-sky-400 bg-sky-50 py-4 dark:bg-sky-500/10"></div>
+             :class="opens({{ $index }}) ? 'h-16 border-2 border-dashed border-sky-400 bg-sky-50 dark:bg-sky-500/10' : 'h-0'"
+             class="rounded-lg transition-all"></div>
 
         <div wire:key="kb-block-{{ $index }}-{{ $type }}"
+             data-block
              x-on:dragover="over($event, {{ $index }})"
              x-on:drop.prevent="drop()"
-             :class="dragged === {{ $index }} ? 'opacity-40' : ''"
+             :class="dragged === {{ $index }} ? 'opacity-30' : ''"
              class="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
             <div class="mb-2 flex items-center justify-between">
                 <span class="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
@@ -72,19 +96,14 @@
                          text a označení odstavce by jinak začalo přesun. --}}
                     <span
                         draggable="true"
-                        x-on:dragstart="start({{ $index }})"
-                        class="cursor-grab select-none text-zinc-400 active:cursor-grabbing"
-                        aria-hidden="true"
+                        x-on:dragstart="start($event, {{ $index }})"
+                        class="cursor-grab select-none px-1 text-zinc-400 transition hover:text-zinc-700 active:cursor-grabbing dark:hover:text-zinc-200"
+                        title="{{ __('knowledge-base::kb.editor.drag_hint') }}"
+                        data-testid="kb-block-handle-{{ $index }}"
                     >⠿</span>
                     {{ __('knowledge-base::kb.editor.block.'.$type) ?: $type }}
                 </span>
                 <div class="flex items-center gap-1">
-                    <button type="button" wire:click="moveBlock({{ $index }}, -1)" @disabled($index === 0)
-                        class="rounded p-1 text-zinc-400 transition hover:text-zinc-700 disabled:opacity-30 dark:hover:text-zinc-200"
-                        aria-label="{{ __('knowledge-base::kb.editor.move_up') }}">&uarr;</button>
-                    <button type="button" wire:click="moveBlock({{ $index }}, 1)" @disabled($index === count($this->blockData) - 1)
-                        class="rounded p-1 text-zinc-400 transition hover:text-zinc-700 disabled:opacity-30 dark:hover:text-zinc-200"
-                        aria-label="{{ __('knowledge-base::kb.editor.move_down') }}">&darr;</button>
                     <button type="button" wire:click="duplicateBlock({{ $index }})"
                         class="rounded p-1 text-zinc-400 transition hover:text-zinc-700 dark:hover:text-zinc-200"
                         aria-label="{{ __('knowledge-base::kb.editor.duplicate') }}">&#10697;</button>
@@ -111,10 +130,10 @@
         </p>
     @endforelse
 
-    <div x-show="opens({{ count($this->blockData) }})"
-         x-on:dragover.prevent="gap = {{ count($this->blockData) }}"
+    <div x-on:dragover.prevent="dragging() && (gap = {{ count($this->blockData) }})"
          x-on:drop.prevent="drop()"
-         class="rounded-lg border-2 border-dashed border-sky-400 bg-sky-50 py-4 dark:bg-sky-500/10"></div>
+         :class="opens({{ count($this->blockData) }}) ? 'h-16 border-2 border-dashed border-sky-400 bg-sky-50 dark:bg-sky-500/10' : 'h-0'"
+         class="rounded-lg transition-all"></div>
 
     <button
         type="button"

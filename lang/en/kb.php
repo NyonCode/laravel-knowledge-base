@@ -21,7 +21,7 @@ return [
 
     'format' => [
         'markdown' => 'Markdown',
-        'rich-text' => 'Rich text',
+        'rich-text' => 'Text editor',
         'blocks' => 'Blocks',
     ],
 
@@ -76,6 +76,9 @@ return [
     ],
 
     'editor' => [
+        'drag_hint' => 'Drag to reorder',
+        'row' => 'row',
+        'column' => 'column',
         'tone_info' => 'Note',
         'tone_success' => 'Tip',
         'tone_warning' => 'Careful',
