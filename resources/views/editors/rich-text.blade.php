@@ -35,6 +35,12 @@
                     // `false` = neposílat request; hodnota odejde se zbytkem
                     // formuláře. Request na každý úhoz by z psaní udělal čekání.
                     onChange: (html) => $wire.set('{{ $statePath }}', html, false),
+                    bubble: this.$refs.bubble,
+                    floating: this.$refs.floating,
+                    handle: this.$refs.handle,
+                    upload: (file) => this.uploadImage(file),
+                    mentions: @js($this->mentionTargets()),
+                    placeholder: @js(__('knowledge-base::kb.editor.placeholder')),
                 })
 
                 // Stav panelu se čte z editoru, nedrží se vedle něj: druhá
@@ -57,7 +63,15 @@
                         task: this.raw().isActive('taskList'),
                         quote: this.raw().isActive('blockquote'),
                         codeBlock: this.raw().isActive('codeBlock'),
+                        codeLanguage: this.raw().getAttributes('codeBlock').language ?? '',
+                        codeTitle: this.raw().getAttributes('codeBlock').title ?? '',
                         link: this.raw().isActive('link'),
+                        style: this.raw().isActive('codeBlock') ? 'code'
+                            : this.raw().isActive('blockquote') ? 'quote'
+                            : this.raw().isActive('heading', { level: 2 }) ? 'h2'
+                            : this.raw().isActive('heading', { level: 3 }) ? 'h3'
+                            : 'paragraph',
+                        invisible: this.raw().storage.invisibleCharacters?.visibility?.() ?? false,
                         table: this.raw().isActive('table'),
                         align: ['left', 'center', 'right', 'justify'].find(a => this.raw().isActive({ textAlign: a })) ?? null,
                     }
@@ -68,6 +82,69 @@
             })
         },
 
+
+        /*
+         * Styl odstavce jedním výběrem.
+         *
+         * „Normální“ nesundá jen nadpis, ale i citaci: kdo v seznamu vybere
+         * normální text, čeká prostý odstavec, ne odstavec pořád zapíchnutý
+         * v citaci.
+         */
+        style(value) {
+            const chain = this.raw().chain().focus()
+
+            if (value === 'h2' || value === 'h3') {
+                chain.setNode('heading', { level: value === 'h2' ? 2 : 3 })
+            } else if (value === 'quote') {
+                chain.setBlockquote()
+            } else if (value === 'code') {
+                chain.setCodeBlock()
+            } else {
+                chain.setParagraph().unsetBlockquote()
+            }
+
+            chain.run()
+        },
+
+        /* Rodina písma; prázdná hodnota je hlavička seznamu, ne volba. */
+        family(value) {
+            if (value === '') {
+                return
+            }
+
+            value === 'reset'
+                ? this.run((chain) => chain.unsetFontFamily())
+                : this.run((chain) => chain.setFontFamily(value))
+        },
+
+        /**
+         * Nahraje soubor a vrátí adresu.
+         *
+         * Nahrávání vlastní Livewire (jedna vlastnost, validace i úložiště na
+         * serveru), ale TipTap potřebuje adresu zpátky v JavaScriptu, aby obrázek
+         * vložil přesně tam, kam ho autor pustil. Server ji po uložení rozešle
+         * událostí `kb-image-picked`; tenhle slib na ni jednou počká.
+         */
+        uploadImage(file) {
+            return new Promise((resolve, reject) => {
+                const done = (event) => {
+                    window.removeEventListener('kb-image-picked', done)
+                    this.uploading = false
+                    resolve(event.detail.url)
+                }
+
+                const failed = () => {
+                    window.removeEventListener('kb-image-picked', done)
+                    this.uploading = false
+                    reject(new Error('upload failed'))
+                }
+
+                window.addEventListener('kb-image-picked', done)
+                this.uploading = true
+
+                $wire.upload('imageUpload', file, () => {}, failed)
+            })
+        },
 
         /* Barva písma; „inherit“ ji odebere. */
         color(value) {
@@ -128,23 +205,6 @@
             }
         },
 
-        /**
-         * Soubor upuštěný přímo na plochu se nahraje bez otevírání výběru.
-         * Přetažení **je** to potvrzení; modálka by tu byla krok navíc.
-         */
-        dropped(event) {
-            const file = event.dataTransfer?.files?.[0]
-
-            if (! file || ! file.type.startsWith('image/')) {
-                return
-            }
-
-            event.preventDefault()
-            this.uploading = true
-
-            $wire.upload('imageUpload', file, () => { this.uploading = false })
-        },
-
         destroy() {
             this.editor?.destroy()
         },
@@ -160,7 +220,21 @@
     <textarea x-show="! ready" rows="20" wire:model.blur="{{ $statePath }}"
         class="w-full border-0 p-4 font-mono text-sm focus:ring-0 dark:bg-zinc-900 dark:text-zinc-100"></textarea>
 
-    <div wire:ignore x-show="ready" x-on:drop="dropped($event)" x-on:dragover.prevent>
+    {{-- Plovoucí prvky patří k ploše, ne pod `wire:ignore`: TipTap je
+         přemisťuje sám a morph by je vracel na místo. --}}
+    <template x-if="ready">
+        <div>
+            @include('knowledge-base::editors._bubble-menu')
+            @include('knowledge-base::editors._floating-menu')
+            {{-- Úchyt na okraji odstavce; TipTap ho polohuje podle toho, nad
+                 čím je myš. --}}
+            <div x-ref="handle" class="kb-drag-handle" aria-hidden="true">
+                <svg viewBox="0 0 10 16" fill="currentColor" aria-hidden="true"><circle cx="3" cy="3" r="1.2"/><circle cx="7" cy="3" r="1.2"/><circle cx="3" cy="8" r="1.2"/><circle cx="7" cy="8" r="1.2"/><circle cx="3" cy="13" r="1.2"/><circle cx="7" cy="13" r="1.2"/></svg>
+            </div>
+        </div>
+    </template>
+
+    <div wire:ignore x-show="ready">
         <div
             x-ref="surface"
             class="kb-prose prose prose-zinc min-h-[24rem] max-w-none p-4 focus:outline-none dark:prose-invert"

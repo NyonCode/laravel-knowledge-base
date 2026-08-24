@@ -7,12 +7,14 @@ namespace NyonCode\KnowledgeBase\Services;
 use League\CommonMark\Environment\Environment;
 use League\CommonMark\Extension\Autolink\AutolinkExtension;
 use League\CommonMark\Extension\CommonMark\CommonMarkCoreExtension;
+use League\CommonMark\Extension\CommonMark\Node\Block\FencedCode;
 use League\CommonMark\Extension\Table\TableExtension;
 use League\CommonMark\MarkdownConverter;
 use NyonCode\KnowledgeBase\Contracts\ContentRenderer;
 use NyonCode\KnowledgeBase\Contracts\MarkdownRenderer;
 use NyonCode\KnowledgeBase\Enums\ContentFormat;
 use NyonCode\KnowledgeBase\Support\Html;
+use NyonCode\KnowledgeBase\Support\Markdown\FencedCodeRenderer;
 
 /**
  * The shipped renderer: CommonMark, then heading ids, then a sanitiser.
@@ -75,6 +77,12 @@ final class CommonMarkRenderer implements ContentRenderer, MarkdownRenderer
         $environment->addExtension(new CommonMarkCoreExtension);
         $environment->addExtension(new TableExtension);
         $environment->addExtension(new AutolinkExtension);
+
+        // Vlastní render code fence: z info stringu si odnese i titulek
+        // (```` ```php title="app/Foo.php" ````), který výchozí render zahazuje,
+        // a popíše blok stejnými `data-*` jako blokový editor — jeden tvar pro
+        // zvýrazňovač i pro CSS bez ohledu na to, čím se článek psal.
+        $environment->addRenderer(FencedCode::class, new FencedCodeRenderer, 10);
 
         return $this->converter = new MarkdownConverter($environment);
     }

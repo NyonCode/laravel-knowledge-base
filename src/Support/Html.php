@@ -79,8 +79,8 @@ final class Html
                     // a bez povolení by je čtenář nikdy neviděl — tabulka by
                     // se po uložení sama přerovnala.
                     $allowed = [
-                        'color', 'background-color', 'font-size', 'text-align',
-                        'width', 'min-width',
+                        'color', 'background-color', 'font-size', 'font-family',
+                        'text-align', 'width', 'min-width',
                     ];
 
                     if (! in_array($property, $allowed, true) || $value === '') {
@@ -167,7 +167,13 @@ final class Html
             ->allowElement('tr')
             ->allowElement('th', ['align', 'colspan', 'rowspan', 'colwidth', 'style'])
             ->allowElement('td', ['align', 'colspan', 'rowspan', 'colwidth', 'style'])
-            ->allowElement('pre', ['class'])
+            // `data-*` na `<pre>` nese popis code bloku pro zvýrazňovač
+            // hostitele (jazyk, titulek souboru, volby jednoho bloku) a marker
+            // vlastního vzhledu. Bez nich by se z bloku po sanitizaci ztratilo
+            // všechno kromě samotného kódu — a zvýraznění by se tiše vyplo.
+            ->allowElement('pre', [
+                'class', 'data-lang', 'data-title', 'data-torchlight', 'data-kb-block',
+            ])
             ->allowElement('code', ['class'])
             ->allowElement('span', ['class', 'style'])
             // Zaškrtávací seznam z TipTapu. `input` je jediný interaktivní
@@ -195,6 +201,14 @@ final class Html
             ->allowElement('figcaption', ['class'])
             ->allowElement('a', ['href', 'title', 'class', 'id', 'target', 'rel'])
             ->allowElement('img', ['src', 'alt', 'title', 'width', 'height', 'loading'])
+            // ⚠️ Až **za** všemi `allowElement()`: ty seznam atributů pro
+            // svůj prvek přepisují, takže dřív zapsané `data-id` by zmizelo.
+            //
+            // Trvalá identita odstavce a nadpisu (TipTap `UniqueID`). Nese ji
+            // dokument, ne render, protože je to kotva, na kterou se dá
+            // ukázat i po přepsání textu — na rozdíl od `id`, které se počítá
+            // ze slova v nadpisu a přejmenováním se rozbije.
+            ->allowAttribute('data-id', ['p', 'h2', 'h3', 'h4'])
             ->allowLinkSchemes(['https', 'http', 'mailto'])
             // Bez tohohle sanitizér zahodí **každý relativní odkaz** — a to
             // je zrovna ten způsob, jakým se odkazuje uvnitř báze

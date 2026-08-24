@@ -249,8 +249,16 @@ it('round-trips blocks between the editing rows and the stored shape', function 
         // Prázdný řádek není krok.
         ->and($stored[1]['data']['items'])->toBe(['První', 'Druhý', 'Třetí']);
 
-    expect($editor::unpack($editor::pack($rows))[1]['lines'])
-        ->toBe("První\nDruhý\nTřetí");
+    // Zpátky k editaci se kroky otevřou jako seznam v HTML, ne jako řádky:
+    // položka dnes unese odkaz i zvýraznění, což holý řádek nikdy neuměl.
+    // Starý obsah se převádí tady, ne migrací — bloku, kterého se nikdo
+    // nedotkne, se nemá co měnit.
+    $reopened = $editor::unpack($editor::pack($rows))[1];
+
+    expect($reopened)->not->toHaveKey('lines')
+        ->and($reopened['html'])->toContain('<ol>')
+        ->toContain('První')
+        ->toContain('Třetí');
 });
 
 it('keeps a block whose type nobody can edit any more', function () {
@@ -679,14 +687,19 @@ it('offers text formatting in a block, not just in an article', function () {
     $compact = $toolbar(true);
 
     // Co blok nenahradí vlastním typem, musí jít udělat i uvnitř něj –
-    // vystředěný odstavec je v upozornění stejně běžný jako v článku.
-    foreach (['setTextAlign', 'toggleSubscript', 'toggleSuperscript', 'unsetAllMarks', 'toggleTaskList'] as $command) {
+    // vystředěný odstavec je v upozornění stejně běžný jako v článku,
+    // a zpět/znovu potřebuje autor všude.
+    foreach ([
+        'setTextAlign', 'toggleSubscript', 'toggleSuperscript', 'unsetAllMarks',
+        'toggleTaskList', 'size(', 'family(', 'toggleInvisibleCharacters', 'undo()',
+    ] as $command) {
         expect($compact)->toContain($command);
     }
 
     // A co vlastní typ bloku má, se v něm nabízet nemá: nadpis vložený do
     // textového bloku by se choval jinak než blok Nadpis vedle něj.
-    foreach (['toggleHeading', 'insertTable', 'setHorizontalRule'] as $command) {
+    // (Nadpisy jsou v seznamu stylů odstavce, proto `style(`.)
+    foreach (['style(', 'insertTable', 'setHorizontalRule'] as $command) {
         expect($compact)->not->toContain($command)
             ->and($full)->toContain($command);
     }
@@ -754,3 +767,71 @@ it('refuses a block article with nothing in it', function () {
 
     expect(Article::query()->count())->toBe(0);
 });
+
+it('opens a pipe-written table as a real table, and still renders the old one', function () {
+    $editor = new class extends ArticleEditor
+    {
+        /** @return array<int, array<string, mixed>> */
+        public static function unpack(string $json): array
+        {
+            return self::toEditing($json);
+        }
+    };
+
+    $stored = json_encode([[
+        'type' => 'table',
+        'data' => ['rows' => "Klíč|Význam\nprvní|jedna"],
+    ]]);
+
+    $reopened = $editor::unpack((string) $stored)[0];
+
+    // K editaci se dostane hotová tabulka, ne řádky se svislítky.
+    expect($reopened)->not->toHaveKey('rows')
+        ->and($reopened['html'])->toContain('<th>')
+        ->toContain('Význam');
+
+    // A blok, kterého se nikdo nedotkl, se pořád vykreslí — převod je při
+    // editaci, ne migrací databáze.
+    expect(app(RendererRegistry::class)->render(ContentFormat::Blocks, (string) $stored))
+        ->toContain('<th>')
+        ->toContain('první');
+});
+
+it('keeps the font and the node identity the editor writes', function () {
+    // `data-id` je trvalá kotva odstavce (TipTap UniqueID) — na rozdíl od
+    // `id`, které se počítá z textu nadpisu a přejmenováním se rozbije.
+    // ⚠️ V sanitizéru musí stát až za všemi `allowElement()`, jinak ho
+    // pozdější deklarace prvku zase odstraní.
+    expect(app(RendererRegistry::class)->render(
+        ContentFormat::RichText,
+        '<p data-id="abc" style="font-family: Georgia, serif">text</p>'
+    ))->toContain('data-id="abc"')->toContain('font-family: Georgia, serif');
+});
+
+it('never writes an ASCII quote inside an x-data attribute', function (string $view) {
+    // `x-data="{ … }"` je HTML atribut v uvozovkách: první ASCII `"` uvnitř
+    // ho ukončí, prohlížeč spadne na SyntaxError a **celá** komponenta je
+    // mrtvá — nefunguje panel, editor ani nic dalšího na stránce. Nejčastěji
+    // to způsobí česká uvozovka dopsaná do komentáře jako `"` místo `“`.
+    // Stalo se to už dvakrát, proto ten hlídač.
+    $source = file_get_contents(__DIR__.'/../../resources/views/editors/'.$view);
+
+    $start = strpos((string) $source, 'x-data="{');
+    expect($start)->not->toBeFalse();
+
+    $depth = 0;
+    $body = '';
+
+    for ($i = $start + strlen('x-data="'); $i < strlen((string) $source); $i++) {
+        $character = $source[$i];
+        $body .= $character;
+
+        $depth += $character === '{' ? 1 : ($character === '}' ? -1 : 0);
+
+        if ($depth === 0) {
+            break;
+        }
+    }
+
+    expect($body)->not->toContain('"');
+})->with(['rich-text.blade.php', 'blocks/_rich.blade.php']);

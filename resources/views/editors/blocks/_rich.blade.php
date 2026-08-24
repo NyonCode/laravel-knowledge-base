@@ -15,6 +15,13 @@
     $statePath = 'blockData.'.$index.'.'.$field;
     $value = $this->blockData[$index][$field] ?? '';
     $rich = \NyonCode\KnowledgeBase\Support\Settings::bool('editors.tiptap.bundled');
+
+    // Předvolba: prázdný blok se rovnou otevře jako seznam, aby autor nemusel
+    // v bloku „Kroky“ hledat tlačítko na číslování.
+    $preset = $preset ?? null;
+
+    // Nástroje navíc pro blok, jehož jádrem jsou (tabulka).
+    $tools = $tools ?? null;
 @endphp
 
 @if ($rich)
@@ -23,6 +30,7 @@
         x-data="{
             editor: null,
             active: {},
+            uploading: false,
             // Dokud se editor nenamontuje, drží se textarea. Prázdný rámeček
             // by vypadal jako rozbité pole a autor by neměl kam psát —
             // nejčastěji se to stane, když hostitel bundle nenasadil.
@@ -39,6 +47,13 @@
                     this.editor = window.kbEditor(this.$refs.surface, {
                         content: @js($value),
                         onChange: (html) => $wire.set(@js($statePath), html, false),
+                        // `compact`: úchyt by v bloku soupeřil s přetahováním
+                        // samotných bloků a nabídka vložení s jejich paletou.
+                        compact: true,
+                        bubble: this.$refs.bubble,
+                        upload: (file) => this.uploadImage(file),
+                        mentions: @js($this->mentionTargets()),
+                        placeholder: @js(__('knowledge-base::kb.editor.placeholder')),
                     })
 
                     const sync = () => {
@@ -56,6 +71,12 @@
                             listItem: this.raw().isActive('listItem'),
                             task: this.raw().isActive('taskList'),
                             link: this.raw().isActive('link'),
+                            style: this.raw().isActive('codeBlock') ? 'code'
+                                : this.raw().isActive('blockquote') ? 'quote'
+                                : this.raw().isActive('heading', { level: 2 }) ? 'h2'
+                                : this.raw().isActive('heading', { level: 3 }) ? 'h3'
+                                : 'paragraph',
+                            invisible: this.raw().storage.invisibleCharacters?.visibility?.() ?? false,
                             // Zarovnání se nedá zjistit jedním dotazem: je to
                             // atribut uzlu, ne značka, tak se zkusí hodnoty.
                             align: ['left', 'center', 'right', 'justify']
@@ -65,9 +86,80 @@
 
                     this.raw().on('transaction', sync)
                     sync()
+
+                    @if ($preset)
+                        // Jen do prázdného bloku: u rozepsaného obsahu by
+                        // předvolba přepsala, co v něm autor má.
+                        if (this.raw().isEmpty) {
+                            this.run((chain) => chain.toggle{{ ucfirst($preset) }}())
+                        }
+                    @endif
                 })
             },
 
+
+            /*
+             * Styl odstavce jedním výběrem.
+             *
+             * „Normální“ nesundá jen nadpis, ale i citaci: kdo v seznamu vybere
+             * normální text, čeká prostý odstavec, ne odstavec pořád zapíchnutý
+             * v citaci.
+             */
+            style(value) {
+                const chain = this.raw().chain().focus()
+
+                if (value === 'h2' || value === 'h3') {
+                    chain.setNode('heading', { level: value === 'h2' ? 2 : 3 })
+                } else if (value === 'quote') {
+                    chain.setBlockquote()
+                } else if (value === 'code') {
+                    chain.setCodeBlock()
+                } else {
+                    chain.setParagraph().unsetBlockquote()
+                }
+
+                chain.run()
+            },
+
+            /* Rodina písma; prázdná hodnota je hlavička seznamu, ne volba. */
+            family(value) {
+                if (value === '') {
+                    return
+                }
+
+                value === 'reset'
+                    ? this.run((chain) => chain.unsetFontFamily())
+                    : this.run((chain) => chain.setFontFamily(value))
+            },
+
+            /**
+             * Nahraje soubor a vrátí adresu.
+             *
+             * Nahrávání vlastní Livewire (jedna vlastnost, validace i úložiště na
+             * serveru), ale TipTap potřebuje adresu zpátky v JavaScriptu, aby obrázek
+             * vložil přesně tam, kam ho autor pustil. Server ji po uložení rozešle
+             * událostí `kb-image-picked`; tenhle slib na ni jednou počká.
+             */
+            uploadImage(file) {
+                return new Promise((resolve, reject) => {
+                    const done = (event) => {
+                        window.removeEventListener('kb-image-picked', done)
+                        this.uploading = false
+                        resolve(event.detail.url)
+                    }
+
+                    const failed = () => {
+                        window.removeEventListener('kb-image-picked', done)
+                        this.uploading = false
+                        reject(new Error('upload failed'))
+                    }
+
+                    window.addEventListener('kb-image-picked', done)
+                    this.uploading = true
+
+                    $wire.upload('imageUpload', file, () => {}, failed)
+                })
+            },
 
             /* Barva písma; „inherit“ ji odebere. */
             color(value) {
@@ -118,11 +210,15 @@
         class="overflow-hidden rounded-lg border border-zinc-200 dark:border-zinc-800"
     >
         <div x-show="ready" x-cloak>
-            @include('knowledge-base::editors._tiptap-toolbar', ['compact' => true])
+            @include('knowledge-base::editors._tiptap-toolbar', ['compact' => true, 'tools' => $tools])
         </div>
 
         <textarea x-show="! ready" rows="3" wire:model.blur="{{ $statePath }}"
             class="w-full border-0 p-3 text-sm focus:ring-0 dark:bg-zinc-950 dark:text-zinc-100"></textarea>
+
+        <template x-if="ready">
+            <div>@include('knowledge-base::editors._bubble-menu')</div>
+        </template>
 
         <div wire:ignore x-show="ready">
             <div

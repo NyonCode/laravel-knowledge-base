@@ -22,8 +22,10 @@ use NyonCode\KnowledgeBase\Models\Category;
 use NyonCode\KnowledgeBase\Services\EditorRegistry;
 use NyonCode\KnowledgeBase\Services\KnowledgeBase;
 use NyonCode\KnowledgeBase\Services\RendererRegistry;
+use NyonCode\KnowledgeBase\Support\BlockHtml;
 use NyonCode\KnowledgeBase\Support\Cast;
 use NyonCode\KnowledgeBase\Support\Layouts;
+use NyonCode\KnowledgeBase\Support\Routes;
 use NyonCode\KnowledgeBase\Support\Settings;
 
 /**
@@ -202,6 +204,27 @@ class ArticleEditor extends Component
         return $articles;
     }
 
+    /**
+     * Články pro našeptávač `@` v textu.
+     *
+     * Zmínka vloží **obyčejný odkaz**, ne zvláštní uzel: je to způsob, jak
+     * odkaz najít bez opisování adresy, ne nový druh obsahu. Uložený článek
+     * tak nese `<a>`, kterému rozumí čtenář, sanitizér i vyhledávání.
+     *
+     * @return array<int, array{label: string, url: string}>
+     */
+    public function mentionTargets(): array
+    {
+        return array_map(
+            static fn (string $title, string $slug): array => [
+                'label' => $title,
+                'url' => Routes::articlePath($slug),
+            ],
+            array_values($this->linkableArticles()),
+            array_keys($this->linkableArticles()),
+        );
+    }
+
     // --- Obrázky ---------------------------------------------------------------
 
     public function openImagePicker(?int $index = null): void
@@ -267,8 +290,45 @@ class ArticleEditor extends Component
 
     public function addBlock(string $type): void
     {
-        $this->blockData[] = ['type' => $type];
+        $this->blockData[] = ['type' => $type] + self::blockDefaults($type);
         $this->blockPicker = false;
+    }
+
+    /**
+     * Výchozí hodnoty polí bloku.
+     *
+     * Doplňují se při vložení **i při načtení uloženého článku**, a to kvůli
+     * zaškrtávátkům: chybějící volba znamená „nech to na globálním nastavení",
+     * jenže prázdný checkbox tvrdí „vypnuto". U `diffIndicators`, které jsou
+     * globálně zapnuté, by panel ukazoval pravý opak toho, co stránka dělá.
+     * Doplněná hodnota je stejná jako to globální nastavení
+     * ({@see config('knowledge-base.editors.blocks.code')}), takže se render
+     * nemění — jen se přestane lhát.
+     *
+     * Jazyk se doplňuje **jen u nového** bloku: u uloženého je prázdno volba
+     * autora (blok bez zvýraznění), ne chybějící údaj.
+     *
+     * @return array<string, mixed>
+     */
+    protected static function blockDefaults(string $type, bool $fresh = true): array
+    {
+        if ($type !== 'code') {
+            return [];
+        }
+
+        $options = Settings::array('editors.blocks.code');
+
+        $defaults = [
+            'line_numbers' => (bool) ($options['line_numbers'] ?? false),
+            'diff_indicators' => (bool) ($options['diff_indicators'] ?? true),
+        ];
+
+        if ($fresh) {
+            $languages = array_keys(Settings::array('editors.languages'));
+            $defaults['language'] = (string) ($languages[0] ?? 'text');
+        }
+
+        return $defaults;
     }
 
     /**
@@ -368,7 +428,12 @@ class ArticleEditor extends Component
                 continue;
             }
 
+            /** @var array<string, mixed> $data */
             $data = is_array($block['data'] ?? null) ? $block['data'] : [];
+
+            // Tabulka a seznamy se dnes editují jako HTML; starší tvar se
+            // převede při otevření, ne migrací (viz BlockHtml).
+            $data = BlockHtml::upgrade($block['type'], $data);
 
             if (isset($data['items']) && is_array($data['items'])) {
                 $data['lines'] = implode("\n", array_map(
@@ -381,7 +446,9 @@ class ArticleEditor extends Component
             }
 
             /** @var array<string, mixed> $row */
-            $row = ['type' => $block['type']] + $data;
+            $row = ['type' => $block['type']]
+                + $data
+                + self::blockDefaults($block['type'], fresh: false);
 
             $rows[] = $row;
         }

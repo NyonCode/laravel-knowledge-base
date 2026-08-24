@@ -142,6 +142,37 @@ return [
             BlockEditor::class,
         ],
 
+        /*
+        | Nabídka jazyků pro code blok — v blokovém editoru i v TipTapu.
+        |
+        | Klíč je identifikátor jazyka, jak ho čeká zvýrazňovač (Torchlight,
+        | highlight.js); hodnota je jen popisek v nabídce. Psalo se sem
+        | volným polem a doplácela na to hlavně ta půlka, která se nezobrazí:
+        | překlep (`js` vs `javascript`, `yml` vs `yaml`) zvýraznění tiše
+        | vypne — blok se vykreslí, jen je černobílý, takže si toho autor
+        | všimne až na hotové stránce.
+        |
+        | Seznam je konfigurace, ne konstanta: aplikace, která píše o Rustu,
+        | si ho přepíše, a nabídka zůstane krátká i pro ty ostatní.
+        */
+        'languages' => [
+            'php' => 'PHP',
+            'blade' => 'Blade',
+            'javascript' => 'JavaScript',
+            'typescript' => 'TypeScript',
+            'html' => 'HTML',
+            'css' => 'CSS',
+            'json' => 'JSON',
+            'yaml' => 'YAML',
+            'bash' => 'Shell',
+            'sql' => 'SQL',
+            'python' => 'Python',
+            'xml' => 'XML',
+            'markdown' => 'Markdown',
+            'diff' => 'Diff',
+            'text' => 'Text',
+        ],
+
         'tiptap' => [
             // The package ships the Blade side and the Alpine glue, not TipTap
             // itself — bundling an editor would push a second ProseMirror into
@@ -162,6 +193,20 @@ return [
                 'code' => ['code', 'terminal', 'table'],
                 'media' => ['image', 'video', 'file'],
                 'links' => ['article', 'faq'],
+            ],
+
+            /*
+            | Výchozí stav zaškrtávátek `code` bloku.
+            |
+            | Zvýrazňovač hostitele má svoje globální nastavení (u Torchlightu
+            | `config/torchlight.php`) a tohle ho má **zrcadlit**: blok, kde
+            | autor nic nepřepnul, se pak vykreslí stejně, jako by tu volba
+            | vůbec nebyla. Kdyby se ty dvě hodnoty rozešly, panel by ukazoval
+            | jeden stav a stránka dělala druhý.
+            */
+            'code' => [
+                'line_numbers' => false,
+                'diff_indicators' => true,
             ],
 
             // Odkud se smí vložit přehrávač. Sanitizér `iframe` jinak zahazuje

@@ -37,6 +37,19 @@ final class Routes
         return self::to(self::readName('article'), ['slug' => $article->slug]);
     }
 
+    /**
+     * Adresa článku tak, jak se **zapisuje do textu**.
+     *
+     * Ne `route()`: ta by v administraci vyrobila admin adresu a ta by se
+     * uložila do obsahu, který čte i veřejná plocha. V textu se odkazuje
+     * veřejnou cestou a na plochu ji přepíše {@see self::retarget()} až při
+     * zobrazení — jedno `body_html` slouží oběma.
+     */
+    public static function articlePath(string $slug): string
+    {
+        return '/'.trim(Settings::string('routes.prefix', 'napoveda'), '/').'/'.$slug;
+    }
+
     public static function adminIndex(): string
     {
         return self::to(Settings::string('routes.admin.index'));

@@ -14,6 +14,11 @@
 --}}
 @php
     $compact = $compact ?? false;
+
+    // Tabulka se v běžném bloku nenabízí – má vlastní typ. Uvnitř *toho*
+    // typu je ale ovládání tabulky to jediné, oč jde.
+    $tools = $tools ?? null;
+    $tables = ! $compact || $tools === 'table';
     $btn = 'rounded px-2 py-1 text-xs transition hover:bg-zinc-200 dark:hover:bg-zinc-800';
     $on = 'bg-zinc-900 text-white hover:bg-zinc-900 dark:bg-white dark:text-zinc-900';
     $off = 'text-zinc-600 dark:text-zinc-300';
@@ -42,19 +47,49 @@
 
 <div class="flex flex-wrap items-center gap-1 border-b border-zinc-200 bg-zinc-50 px-2 py-1.5 dark:border-zinc-800 dark:bg-zinc-950">
     @unless ($compact)
-        <button type="button" x-on:click="run(c => c.toggleHeading({ level: 2 }))" :class="active.h2 ? '{{ $on }}' : '{{ $off }}'" class="{{ $btn }} font-semibold">H2</button>
-        <button type="button" x-on:click="run(c => c.toggleHeading({ level: 3 }))" :class="active.h3 ? '{{ $on }}' : '{{ $off }}'" class="{{ $btn }} font-semibold">H3</button>
-
-        <select x-on:change="size($event.target.value); $event.target.value = ''"
-            class="rounded border-zinc-300 py-0.5 pl-2 pr-6 text-xs text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300">
-            <option value="">{{ __('knowledge-base::kb.editor.font_size') }}</option>
-            @foreach (['' => __('knowledge-base::kb.editor.size_default'), '0.875em' => __('knowledge-base::kb.editor.size_small'), '1.25em' => __('knowledge-base::kb.editor.size_large'), '1.5em' => __('knowledge-base::kb.editor.size_huge')] as $value => $label)
+        {{-- Styl odstavce jedním seznamem, ne řadou přepínačů: stavy se
+             vylučují (odstavec není zároveň nadpis) a seznam to říká sám,
+             navíc ukáže, čím odstavec pod kurzorem je. V bloku se nenabízí —
+             tam styl určuje typ bloku. --}}
+        <select x-on:change="style($event.target.value)" :value="active.style"
+            class="rounded border-zinc-300 py-0.5 pl-2 pr-6 text-xs text-zinc-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200">
+            @foreach ([
+                'paragraph' => __('knowledge-base::kb.editor.style_paragraph'),
+                'h2' => __('knowledge-base::kb.editor.style_h2'),
+                'h3' => __('knowledge-base::kb.editor.style_h3'),
+                'quote' => __('knowledge-base::kb.editor.style_quote'),
+                'code' => __('knowledge-base::kb.editor.style_code'),
+            ] as $value => $label)
                 <option value="{{ $value }}">{{ $label }}</option>
             @endforeach
         </select>
-
-        <span class="mx-1 h-4 w-px bg-zinc-300 dark:bg-zinc-700"></span>
     @endunless
+
+    <select x-on:change="size($event.target.value); $event.target.value = ''"
+        class="rounded border-zinc-300 py-0.5 pl-2 pr-6 text-xs text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300">
+        <option value="">{{ __('knowledge-base::kb.editor.font_size') }}</option>
+        @foreach (['' => __('knowledge-base::kb.editor.size_default'), '0.875em' => __('knowledge-base::kb.editor.size_small'), '1.25em' => __('knowledge-base::kb.editor.size_large'), '1.5em' => __('knowledge-base::kb.editor.size_huge')] as $value => $label)
+            <option value="{{ $value }}">{{ $label }}</option>
+        @endforeach
+    </select>
+
+    {{-- Krátký vybraný seznam, ne volný výběr písma: v bázi, kterou plní víc
+         lidí, je libovolná rodina nejrychlejší cesta k deseti různým webům.
+         Tyhle tři drží čitelnost i v tmavém režimu. --}}
+    <select x-on:change="family($event.target.value); $event.target.value = ''"
+        class="rounded border-zinc-300 py-0.5 pl-2 pr-6 text-xs text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300">
+        <option value="">{{ __('knowledge-base::kb.editor.font_family') }}</option>
+        @foreach ([
+            'reset' => __('knowledge-base::kb.editor.font_default'),
+            'system-ui, sans-serif' => __('knowledge-base::kb.editor.font_sans'),
+            'Georgia, serif' => __('knowledge-base::kb.editor.font_serif'),
+            'ui-monospace, monospace' => __('knowledge-base::kb.editor.font_mono'),
+        ] as $value => $label)
+            <option value="{{ $value }}">{{ $label }}</option>
+        @endforeach
+    </select>
+
+    <span class="mx-1 h-4 w-px bg-zinc-300 dark:bg-zinc-700"></span>
 
     <button type="button" x-on:click="run(c => c.toggleBold())" :class="active.bold ? '{{ $on }}' : '{{ $off }}'" class="{{ $btn }} font-bold">B</button>
     <button type="button" x-on:click="run(c => c.toggleItalic())" :class="active.italic ? '{{ $on }}' : '{{ $off }}'" class="{{ $btn }} italic">I</button>
@@ -131,8 +166,34 @@
     @endforeach
 
     @unless ($compact)
-        <button type="button" x-on:click="run(c => c.toggleBlockquote())" :class="active.quote ? '{{ $on }}' : '{{ $off }}'" class="{{ $btn }}">&ldquo;</button>
-        <button type="button" x-on:click="run(c => c.toggleCodeBlock())" :class="active.codeBlock ? '{{ $on }}' : '{{ $off }}'" class="{{ $btn }} font-mono">```</button>
+
+        {{-- Jazyk a název souboru se ukážou, **jen když kurzor stojí v bloku
+             kódu**: na zbytku panelu by to byly dva ovladače, které skoro
+             pořád nemají co ovládat. Jazyk z nabídky, ne z volného pole —
+             překlep zvýraznění tiše vypne a je to vidět až na hotové stránce. --}}
+        <template x-if="active.codeBlock">
+            <span class="inline-flex items-center gap-1">
+                <select
+                    x-on:change="run(c => c.updateAttributes('codeBlock', { language: $event.target.value || null }))"
+                    :value="active.codeLanguage"
+                    class="rounded border border-zinc-300 bg-transparent px-1.5 py-1 font-mono text-xs dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+                    title="{{ __('knowledge-base::kb.editor.block.code_language') }}"
+                >
+                    <option value="">{{ __('knowledge-base::kb.editor.block.no_language') }}</option>
+                    @foreach (\NyonCode\KnowledgeBase\Support\Settings::array('editors.languages') as $value => $label)
+                        <option value="{{ $value }}">{{ $label }}</option>
+                    @endforeach
+                </select>
+
+                <input
+                    type="text"
+                    x-on:change="run(c => c.updateAttributes('codeBlock', { title: $event.target.value || null }))"
+                    :value="active.codeTitle"
+                    placeholder="{{ __('knowledge-base::kb.editor.block.code_title') }}"
+                    class="w-40 rounded border border-zinc-300 bg-transparent px-1.5 py-1 font-mono text-xs dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+                />
+            </span>
+        </template>
         {{-- V blokovém editoru na to je vlastní typ, tady jinak předěl udělat
              nejde – StarterKit ho umí, jen o něj nikdo nežádal. --}}
         <button type="button" x-on:click="run(c => c.setHorizontalRule())" class="{{ $btn }} {{ $off }}" title="{{ __('knowledge-base::kb.editor.horizontal_rule') }}">
@@ -142,6 +203,9 @@
         <span class="mx-1 h-4 w-px bg-zinc-300 dark:bg-zinc-700"></span>
 
         <button type="button" x-on:click="$wire.openImagePicker()" class="{{ $btn }} {{ $off }}">{{ __('knowledge-base::kb.editor.image') }}</button>
+    @endunless
+
+    @if ($tables)
         <button type="button" x-on:click="run(c => c.insertTable({ rows: 3, cols: 3, withHeaderRow: true }))" class="{{ $btn }} {{ $off }}">{{ __('knowledge-base::kb.editor.table') }}</button>
 
         {{-- Ovládání tabulky se ukáže, jen když v ní kurzor stojí: deset
@@ -159,14 +223,20 @@
                 <button type="button" x-on:click="run(c => c.deleteTable())" class="{{ $btn }} {{ $off }}" title="{{ __('knowledge-base::kb.editor.table_delete') }}">&minus;{{ __('knowledge-base::kb.editor.table') }}</button>
             </span>
         </template>
+    @endif
 
-        <span class="ml-auto flex items-center gap-1">
-            <button type="button" x-on:click="run(c => c.undo())" class="{{ $btn }} {{ $off }}" aria-label="{{ __('knowledge-base::kb.editor.undo') }}">
-                <svg class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4 3 8l4 4M3 8h9a5 5 0 0 1 0 10h-4" /></svg>
-            </button>
-            <button type="button" x-on:click="run(c => c.redo())" class="{{ $btn }} {{ $off }}" aria-label="{{ __('knowledge-base::kb.editor.redo') }}">
-                <svg class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m13 4 4 4-4 4M17 8H8a5 5 0 0 0 0 10h4" /></svg>
-            </button>
-        </span>
-    @endunless
+    {{-- Zpět a znovu patří i do bloku: Ctrl+Z sice funguje vždy, ale tlačítko
+         je jediné, co o té možnosti řekne tomu, kdo zkratku nezná. --}}
+    <span class="ml-auto flex items-center gap-1">
+        {{-- Skryté znaky: kde je konec odstavce a kde jen zalomení řádku, se
+             jinak pozná až na hotové stránce. --}}
+        <button type="button" x-on:click="run(c => c.toggleInvisibleCharacters())" :class="active.invisible ? '{{ $on }}' : '{{ $off }}'" class="{{ $btn }}" title="{{ __('knowledge-base::kb.editor.invisible') }}">&para;</button>
+
+        <button type="button" x-on:click="run(c => c.undo())" class="{{ $btn }} {{ $off }}" aria-label="{{ __('knowledge-base::kb.editor.undo') }}">
+            <svg class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4 3 8l4 4M3 8h9a5 5 0 0 1 0 10h-4" /></svg>
+        </button>
+        <button type="button" x-on:click="run(c => c.redo())" class="{{ $btn }} {{ $off }}" aria-label="{{ __('knowledge-base::kb.editor.redo') }}">
+            <svg class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m13 4 4 4-4 4M17 8H8a5 5 0 0 0 0 10h4" /></svg>
+        </button>
+    </span>
 </div>
