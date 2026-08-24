@@ -60,6 +60,50 @@ final class Routes
      * Odsud plyne, že článek otevřený v adminu odkazuje na admin, ne na
      * veřejný web — jinak by čtenáře vyhodil z kontextu, ve kterém pracoval.
      */
+    /**
+     * Přepíše odkazy mezi články na plochu, na které se právě čte.
+     *
+     * V textu se odkazuje adresou (`/napoveda/jak-vydat-verzi`), protože ta se
+     * píše přirozeně a přežije export. Jenže je to adresa **veřejné** plochy —
+     * a čtenář, který článek otevřel v administraci, by kliknutím vyskočil ven
+     * z prostředí, ve kterém pracoval.
+     *
+     * Nepřepisuje se při ukládání, ale při zobrazení: `body_html` je jedna
+     * cache pro obě plochy a zapéct do ní jednu z nich by tu druhou rozbilo.
+     */
+    public static function retarget(?string $html): string
+    {
+        $html = (string) $html;
+
+        if (Surface::current() === Surface::PUBLIC || $html === '') {
+            return $html;
+        }
+
+        $prefix = '/'.trim(Settings::string('routes.prefix', 'napoveda'), '/').'/';
+
+        return (string) preg_replace_callback(
+            '#href="'.preg_quote($prefix, '#').'([^"?\#]+)([^"]*)"#',
+            static function (array $m): string {
+                $path = $m[1];
+
+                // Kategorie mají v adrese vlastní segment, článek je holý slug.
+                if (str_starts_with($path, 'kategorie/')) {
+                    $slug = substr($path, strlen('kategorie/'));
+                    $url = self::to(self::readName('category'), ['category' => $slug]);
+                } else {
+                    $url = self::to(self::readName('article'), ['slug' => $path]);
+                }
+
+                // Route, kterou plocha nemá, se nechá být — odkaz nikam je
+                // horší než odkaz ven.
+                return $url === '#'
+                    ? $m[0]
+                    : 'href="'.$url.$m[2].'"';
+            },
+            $html
+        );
+    }
+
     private static function readName(string $suffix): string
     {
         return Surface::routePrefix().$suffix;

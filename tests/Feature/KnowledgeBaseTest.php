@@ -385,3 +385,19 @@ it('builds a table from pipe separated rows', function () {
     expect($html)->toContain('<th>Stav</th>')
         ->toContain('<td>Open</td>');
 });
+
+it('keeps relative links, which is how articles point at each other', function () {
+    // Sanitizér je bez `allowRelativeLinks()` zahazoval potichu: text zůstal,
+    // odkaz zmizel, a v bázi to nikdo nepozná bez kliknutí.
+    $html = app(CommonMarkRenderer::class)
+        ->render('Začni u [rozsahu](/napoveda/rozsah-vydani).');
+
+    expect($html)->toContain('href="/napoveda/rozsah-vydani"');
+});
+
+it('still refuses a javascript link', function () {
+    $html = app(CommonMarkRenderer::class)
+        ->render('[klikni](javascript:alert(1))');
+
+    expect($html)->not->toContain('javascript:');
+});

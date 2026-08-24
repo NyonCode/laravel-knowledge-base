@@ -68,7 +68,7 @@
             @endif
 
             <div class="kb-prose prose prose-zinc mt-8 max-w-[70ch] dark:prose-invert prose-headings:scroll-mt-24 prose-a:text-sky-700 dark:prose-a:text-sky-400">
-                {!! $article->body_html !!}
+                {!! \NyonCode\KnowledgeBase\Support\Routes::retarget($article->body_html) !!}
             </div>
 
             {{-- The feedback loop. Two buttons, then a box that only appears

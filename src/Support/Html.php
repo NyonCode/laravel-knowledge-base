@@ -107,6 +107,12 @@ final class Html
             ->allowElement('a', ['href', 'title', 'class', 'id', 'target', 'rel'])
             ->allowElement('img', ['src', 'alt', 'title', 'width', 'height', 'loading'])
             ->allowLinkSchemes(['https', 'http', 'mailto'])
+            // Bez tohohle sanitizér zahodí **každý relativní odkaz** — a to
+            // je zrovna ten způsob, jakým se odkazuje uvnitř báze
+            // (`/napoveda/jak-vydat-verzi`). Zmizí přitom potichu: text
+            // zůstane, odkaz ne, takže si toho nikdo nevšimne.
+            ->allowRelativeLinks()
+            ->allowRelativeMedias()
             ->allowMediaSchemes(['https', 'http', 'data'])
             ->allowMediaHosts(null);
     }
