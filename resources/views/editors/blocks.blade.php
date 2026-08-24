@@ -26,7 +26,8 @@
          */
         start(event, index) {
             this.dragged = index
-            this.gap = index
+            // Žádný ghost, dokud kurzor nenavrhne místo, kam to opravdu vede.
+            this.gap = null
 
             event.dataTransfer.effectAllowed = 'move'
             event.dataTransfer.setData('text/plain', String(index))
@@ -42,20 +43,39 @@
         /*
          * Kam blok spadne, ukazuje **ghost, do kterého se bloky rozestoupí**,
          * ne obarvený cíl: nad a pod jsou dva různé výsledky a na
-         * zvýrazněném bloku je od sebe nepoznáš. Rozhoduje půlka výšky.
+         * zvýrazněném bloku je od sebe nepoznáš. Rozhoduje půlka výšky bloku.
          */
-        over(event, index) {
+        overBlock(event, index) {
+            const box = event.currentTarget.getBoundingClientRect()
+
+            this.propose(event, event.clientY < box.top + box.height / 2 ? index : index + 1)
+        },
+
+        /*
+         * Mezera žádné půlky nemá – je to jedno místo. Počítat je tu znamenalo,
+         * že mezera nad blokem nabízela i pozici pod ním.
+         */
+        overGap(event, index) {
+            this.propose(event, index)
+        },
+
+        /*
+         * Dvě místa nikam nevedou: hned nad taženým blokem a hned pod ním.
+         * Ghost se tam **neukáže**, jinak to vypadá, že blok jde položit před
+         * jeho vlastní pozici — a cestou k dalšímu bloku ta mezera kurzor
+         * pohltí dřív, než dojede tam, kam mířil.
+         */
+        propose(event, gap) {
             if (this.dragged === null) return
 
             event.preventDefault()
             event.dataTransfer.dropEffect = 'move'
 
-            const box = event.currentTarget.getBoundingClientRect()
-            this.gap = event.clientY < box.top + box.height / 2 ? index : index + 1
+            this.gap = (gap === this.dragged || gap === this.dragged + 1) ? null : gap
         },
 
         drop() {
-            if (this.dragged !== null && this.gap !== null && this.gap !== this.dragged && this.gap !== this.dragged + 1) {
+            if (this.dragged !== null && this.gap !== null) {
                 $wire.moveBlockTo(this.dragged, this.gap)
             }
 
@@ -79,14 +99,14 @@
              výšku — element, který teprve vznikne, by pod kurzorem nestihl
              dostat `dragover` a gesto by se zahodilo. --}}
         <div wire:key="kb-gap-{{ $index }}"
-             x-on:dragover="over($event, {{ $index }})"
+             x-on:dragover="overGap($event, {{ $index }})"
              x-on:drop.prevent="drop()"
              :class="opens({{ $index }}) ? 'h-16 border-2 border-dashed border-sky-400 bg-sky-50 dark:bg-sky-500/10' : 'h-0'"
              class="rounded-lg transition-all"></div>
 
         <div wire:key="kb-block-{{ $index }}-{{ $type }}"
              data-block
-             x-on:dragover="over($event, {{ $index }})"
+             x-on:dragover="overBlock($event, {{ $index }})"
              x-on:drop.prevent="drop()"
              :class="dragged === {{ $index }} ? 'opacity-30' : ''"
              class="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
@@ -130,7 +150,7 @@
         </p>
     @endforelse
 
-    <div x-on:dragover.prevent="dragging() && (gap = {{ count($this->blockData) }})"
+    <div x-on:dragover="overGap($event, {{ count($this->blockData) }})"
          x-on:drop.prevent="drop()"
          :class="opens({{ count($this->blockData) }}) ? 'h-16 border-2 border-dashed border-sky-400 bg-sky-50 dark:bg-sky-500/10' : 'h-0'"
          class="rounded-lg transition-all"></div>
