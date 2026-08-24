@@ -76,6 +76,14 @@ return [
     ],
 
     'editor' => [
+        'duplicate' => 'Duplikovat',
+        'list' => 'seznam',
+        'image' => 'obrázek',
+        'table' => 'tabulka',
+        'undo' => 'Zpět',
+        'redo' => 'Znovu',
+        'link_prompt' => 'Adresa odkazu (prázdné ho odebere):',
+        'image_prompt' => 'Adresa obrázku:',
         'move_up' => 'Nahoru',
         'move_down' => 'Dolů',
         'block' => [

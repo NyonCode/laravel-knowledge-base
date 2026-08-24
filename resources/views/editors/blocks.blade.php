@@ -30,6 +30,9 @@
                     <button type="button" wire:click="moveBlock({{ $index }}, 1)" @disabled($index === count($this->blockData) - 1)
                         class="rounded p-1 text-zinc-400 transition hover:text-zinc-700 disabled:opacity-30 dark:hover:text-zinc-200"
                         aria-label="{{ __('knowledge-base::kb.editor.move_down') }}">&darr;</button>
+                    <button type="button" wire:click="duplicateBlock({{ $index }})"
+                        class="rounded p-1 text-zinc-400 transition hover:text-zinc-700 dark:hover:text-zinc-200"
+                        aria-label="{{ __('knowledge-base::kb.editor.duplicate') }}">&#10697;</button>
                     <button type="button" wire:click="removeBlock({{ $index }})"
                         class="rounded p-1 text-zinc-400 transition hover:text-rose-600"
                         aria-label="{{ __('knowledge-base::kb.admin.delete') }}">&times;</button>

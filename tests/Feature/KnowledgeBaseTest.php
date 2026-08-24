@@ -271,3 +271,43 @@ it('keeps a block whose type nobody can edit any more', function () {
     expect(json_decode($editor::pack($editor::unpack($json)), true))
         ->toBe([['type' => 'zmizely-typ', 'data' => ['text' => 'obsah']]]);
 });
+
+it('duplicates a block right below the original', function () {
+    $editor = new class extends ArticleEditor
+    {
+        /** @param  array<int, array<string, mixed>>  $rows */
+        public function seed(array $rows): void
+        {
+            $this->blockData = $rows;
+        }
+
+        /** @return array<int, array<string, mixed>> */
+        public function rows(): array
+        {
+            return $this->blockData;
+        }
+    };
+
+    $editor->seed([
+        ['type' => 'heading', 'text' => 'A'],
+        ['type' => 'text', 'text' => 'B'],
+    ]);
+
+    $editor->duplicateBlock(0);
+
+    // Pod originál, ne na konec – kopie se dělá kvůli tomu, co je vedle.
+    expect(array_column($editor->rows(), 'text'))->toBe(['A', 'A', 'B']);
+});
+
+it('rewrites rich text through the sanitiser', function () {
+    // TipTap generuje HTML v prohlížeči, takže je to vstup od uživatele bez
+    // ohledu na to, jak důvěryhodný autor je.
+    $html = app(RendererRegistry::class)->render(
+        ContentFormat::RichText,
+        '<h2>Nadpis</h2><p onclick="alert(1)">text</p><script>alert(2)</script>'
+    );
+
+    expect($html)->toContain('id="nadpis"')
+        ->not->toContain('onclick')
+        ->not->toContain('<script');
+});

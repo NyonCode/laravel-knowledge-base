@@ -174,6 +174,21 @@ class ArticleEditor extends Component
             [$this->blockData[$target], $this->blockData[$index]];
     }
 
+    /**
+     * Zkopíruje blok pod originál.
+     *
+     * U kroků a upozornění se stejná struktura opakuje a přeťukat ji znovu je
+     * ta nejčastější práce navíc, kterou blokový editor umí ušetřit.
+     */
+    public function duplicateBlock(int $index): void
+    {
+        if (! isset($this->blockData[$index])) {
+            return;
+        }
+
+        array_splice($this->blockData, $index + 1, 0, [$this->blockData[$index]]);
+    }
+
     public function removeBlock(int $index): void
     {
         unset($this->blockData[$index]);

@@ -76,6 +76,14 @@ return [
     ],
 
     'editor' => [
+        'duplicate' => 'Duplicate',
+        'list' => 'list',
+        'image' => 'image',
+        'table' => 'table',
+        'undo' => 'Undo',
+        'redo' => 'Redo',
+        'link_prompt' => 'Link address (empty removes it):',
+        'image_prompt' => 'Image address:',
         'move_up' => 'Move up',
         'move_down' => 'Move down',
         'block' => [
