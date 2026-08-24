@@ -346,3 +346,42 @@ it('does not offer files that are not images', function () {
 
     expect(app(ImageLibrary::class)->recent())->toBeEmpty();
 });
+
+it('renders every offered block type', function () {
+    // Typ nabídnutý v editoru musí mít co vykreslit – jinak jde vložit blok,
+    // který se na stránce neobjeví, a autor to zjistí až po publikování.
+    $offered = collect(config('knowledge-base.editors.blocks.types'))->flatten();
+
+    expect($offered)->not->toBeEmpty();
+
+    $missing = $offered->reject(
+        fn (string $type) => view()->exists('knowledge-base::blocks.'.$type)
+    );
+
+    expect($missing->all())->toBe([]);
+});
+
+it('embeds a video only from an allowed host', function () {
+    $render = fn (string $url) => app(RendererRegistry::class)->render(
+        ContentFormat::Blocks,
+        [['type' => 'video', 'data' => ['url' => $url]]]
+    );
+
+    expect($render('https://www.youtube.com/watch?v=abc123'))
+        ->toContain('youtube.com/embed/abc123');
+
+    // Cizí zdroj se nezahodí mlčky – zůstane odkaz, ale žádný iframe.
+    expect($render('https://example.test/video.mp4'))
+        ->not->toContain('<iframe')
+        ->toContain('example.test');
+});
+
+it('builds a table from pipe separated rows', function () {
+    $html = app(RendererRegistry::class)->render(
+        ContentFormat::Blocks,
+        [['type' => 'table', 'data' => ['rows' => "Stav | Znamená\nOpen | čeká se na nás"]]]
+    );
+
+    expect($html)->toContain('<th>Stav</th>')
+        ->toContain('<td>Open</td>');
+});

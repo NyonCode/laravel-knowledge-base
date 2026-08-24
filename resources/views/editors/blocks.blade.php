@@ -56,12 +56,59 @@
         </p>
     @endforelse
 
-    <div class="flex flex-wrap gap-2 border-t border-zinc-200 pt-3 dark:border-zinc-800">
-        @foreach ($types as $type)
-            <button type="button" wire:click="addBlock('{{ $type }}')"
-                class="rounded-lg border border-zinc-300 px-3 py-1.5 text-sm text-zinc-700 transition hover:border-sky-400 hover:text-sky-700 dark:border-zinc-700 dark:text-zinc-200">
-                + {{ __('knowledge-base::kb.editor.block.'.$type) ?: $type }}
-            </button>
-        @endforeach
-    </div>
+    <button
+        type="button"
+        wire:click="$set('blockPicker', true)"
+        class="w-full rounded-xl border-2 border-dashed border-zinc-300 py-3 text-sm font-medium text-zinc-500 transition hover:border-sky-400 hover:text-sky-600 dark:border-zinc-700"
+    >+ {{ __('knowledge-base::kb.editor.add_block') }}</button>
+
+    @if ($blockPicker)
+        <div
+            class="fixed inset-0 z-50 flex items-start justify-center bg-zinc-900/40 p-4 pt-[10vh] backdrop-blur-sm"
+            x-on:click.self="$wire.set('blockPicker', false)"
+            x-on:keydown.escape.window="$wire.set('blockPicker', false)"
+            role="dialog"
+            aria-modal="true"
+            data-testid="kb-block-picker"
+        >
+            <div class="w-full max-w-2xl overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-zinc-900"
+                 x-data="{ q: '' }">
+                <div class="border-b border-zinc-200 px-5 py-3 dark:border-zinc-800">
+                    <h2 class="font-semibold text-zinc-900 dark:text-white">{{ __('knowledge-base::kb.editor.pick_block') }}</h2>
+                    <input type="search" x-model="q" x-init="$nextTick(() => $el.focus())"
+                        placeholder="{{ __('knowledge-base::kb.editor.block_search') }}"
+                        class="mt-2 w-full rounded-lg border border-zinc-200 px-3 py-1.5 text-sm dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100" />
+                </div>
+
+                <div class="max-h-[60vh] overflow-y-auto p-5">
+                    @foreach ($this->blockTypes() as $group => $groupTypes)
+                        {{-- Filtruje Alpine, ne server: hledání v sedmnácti
+                             položkách nemá cenu posílat na druhou stranu drátu. --}}
+                        <div x-show="{{ collect($groupTypes)->map(fn ($t) => "'".e(mb_strtolower(__('knowledge-base::kb.editor.block.'.$t)))."'.includes(q.toLowerCase())")->implode(' || ') }} || q === ''">
+                            <h3 class="mb-2 mt-4 text-xs font-semibold uppercase tracking-wide text-zinc-500 first:mt-0">
+                                {{ __('knowledge-base::kb.editor.block_group.'.$group) }}
+                            </h3>
+                            <div class="grid gap-2 sm:grid-cols-2">
+                                @foreach ($groupTypes as $type)
+                                    <button
+                                        type="button"
+                                        wire:click="addBlock('{{ $type }}')"
+                                        x-show="q === '' || '{{ e(mb_strtolower(__('knowledge-base::kb.editor.block.'.$type))) }}'.includes(q.toLowerCase())"
+                                        class="rounded-xl border border-zinc-200 p-3 text-left transition hover:border-sky-400 hover:bg-sky-50 dark:border-zinc-800 dark:hover:bg-sky-500/10"
+                                    >
+                                        <span class="block text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                                            {{ __('knowledge-base::kb.editor.block.'.$type) }}
+                                        </span>
+                                        <span class="block text-xs text-zinc-500">
+                                            {{ __('knowledge-base::kb.editor.block_hint.'.$type) }}
+                                        </span>
+                                    </button>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+        </div>
+    @endif
 </div>

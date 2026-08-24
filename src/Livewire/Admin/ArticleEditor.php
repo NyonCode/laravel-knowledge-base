@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace NyonCode\KnowledgeBase\Livewire\Admin;
 
 use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -83,6 +84,9 @@ class ArticleEditor extends Component
     public string $note = '';
 
     public bool $preview = false;
+
+    /** Otevřený výběr typu bloku. */
+    public bool $blockPicker = false;
 
     /** Otevřený výběr obrázku. */
     public bool $imagePicker = false;
@@ -170,6 +174,26 @@ class ArticleEditor extends Component
         $this->dispatch('kb-article-saved', id: $article->getKey());
     }
 
+    /**
+     * Články, na které jde odkázat – bez toho, který se právě edituje.
+     *
+     * @return array<string, string> slug => titulek
+     */
+    public function linkableArticles(): array
+    {
+        /** @var array<string, string> $articles */
+        $articles = Article::query()
+            ->when(
+                $this->article?->exists,
+                fn (Builder $query) => $query->whereKeyNot(Cast::int($this->article?->getKey()))
+            )
+            ->orderBy('title')
+            ->pluck('title', 'slug')
+            ->all();
+
+        return $articles;
+    }
+
     // --- Obrázky ---------------------------------------------------------------
 
     public function openImagePicker(?int $index = null): void
@@ -236,6 +260,35 @@ class ArticleEditor extends Component
     public function addBlock(string $type): void
     {
         $this->blockData[] = ['type' => $type];
+        $this->blockPicker = false;
+    }
+
+    /**
+     * Nabídka typů, seskupená podle toho, co s nimi chce člověk udělat.
+     *
+     * Sedmnáct tlačítek v řadě je seznam, ve kterém se nedá vybírat; skupiny
+     * z toho dělají nabídku. Typ bez pohledu na render se **nenabídne** —
+     * jinak by se dal vložit blok, který se na stránce neobjeví.
+     *
+     * @return array<string, array<int, string>>
+     */
+    public function blockTypes(): array
+    {
+        $groups = [];
+
+        foreach (Settings::array('editors.blocks.types') as $group => $types) {
+            $usable = array_values(array_filter(
+                is_array($types) ? $types : [],
+                static fn (mixed $type): bool => is_string($type)
+                    && view()->exists('knowledge-base::blocks.'.$type),
+            ));
+
+            if ($usable !== []) {
+                $groups[(string) $group] = $usable;
+            }
+        }
+
+        return $groups;
     }
 
     public function moveBlock(int $index, int $delta): void
@@ -275,8 +328,9 @@ class ArticleEditor extends Component
     /**
      * Kanonický tvar → řádky k editaci.
      *
-     * `steps` se rozpadá na řádky textarey, protože číslování patří renderu:
-     * autor píše kroky pod sebe, ne `1.`, `2.`, `3.`.
+     * Seznamy (`steps`, `list`, `checklist`) se rozpadají na řádky textarey,
+     * protože odrážky i číslování patří renderu: autor píše položky pod sebe,
+     * ne `1.`, `2.`, `3.`.
      *
      * @return array<int, array<string, mixed>>
      */

@@ -94,10 +94,20 @@ final class Html
             ->allowElement('span', ['class'])
             ->allowElement('div', ['class'])
             ->allowElement('figure', ['class'])
+            ->allowElement('details', ['class', 'open'])
+            ->allowElement('summary', ['class'])
+            ->allowElement('dl', ['class'])
+            ->allowElement('dt', ['class'])
+            ->allowElement('dd', ['class'])
+            // `iframe` je cizí kód na naší stránce, takže se povoluje jen
+            // s pevnou sadou atributů — a **jen** proto, že adresu skládá
+            // partial z whitelistu hostů, ne autor.
+            ->allowElement('iframe', ['src', 'title', 'allowfullscreen', 'loading', 'class'])
             ->allowElement('figcaption', ['class'])
             ->allowElement('a', ['href', 'title', 'class', 'id', 'target', 'rel'])
             ->allowElement('img', ['src', 'alt', 'title', 'width', 'height', 'loading'])
             ->allowLinkSchemes(['https', 'http', 'mailto'])
-            ->allowMediaSchemes(['https', 'http', 'data']);
+            ->allowMediaSchemes(['https', 'http', 'data'])
+            ->allowMediaHosts(null);
     }
 }

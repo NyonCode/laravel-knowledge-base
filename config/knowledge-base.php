@@ -151,10 +151,26 @@ return [
         ],
 
         'blocks' => [
-            // Block types offered in the picker. Each needs a matching
-            // `knowledge-base::blocks.<type>` view; an unknown type renders
-            // nothing rather than throwing, so removing one is safe.
-            'types' => ['heading', 'text', 'callout', 'steps', 'code', 'image'],
+            // Typy nabídnuté v modálu, seskupené podle toho, co s nimi člověk
+            // chce udělat. Každý potřebuje pohled `knowledge-base::blocks.<typ>`
+            // pro render a `knowledge-base::editors.blocks.<typ>` pro editaci;
+            // neznámý typ se **přeskočí**, nespadne — bloky přežívají kód,
+            // který je uměl, takže odebrat typ je bezpečné.
+            'types' => [
+                'text' => ['heading', 'text', 'list', 'steps', 'quote', 'divider'],
+                'highlight' => ['callout', 'definition', 'checklist'],
+                'code' => ['code', 'terminal', 'table'],
+                'media' => ['image', 'video', 'file'],
+                'links' => ['article', 'faq'],
+            ],
+
+            // Odkud se smí vložit přehrávač. Sanitizér `iframe` jinak zahazuje
+            // a je to správně: je to cizí kód na naší stránce. Tenhle seznam
+            // je jediné místo, kde se ta výjimka povoluje.
+            'embed_hosts' => [
+                'youtube.com', 'www.youtube.com', 'youtu.be',
+                'vimeo.com', 'player.vimeo.com',
+            ],
         ],
     ],
 
