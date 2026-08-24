@@ -576,3 +576,44 @@ it('re-renders an article without touching its content or its clock', function (
         // vypadat jako by článek někdo editoval.
         ->and($article->fresh()->updated_at->timestamp)->toBe($touched->timestamp);
 });
+
+it('keeps the styles the editor produces and drops the rest', function () {
+    // Barvu, podbarvení a velikost TipTap vykresluje inline – bez `style` by
+    // z formátování nezbylo nic. Povolit ho celý je ale zbytečně široké.
+    $render = fn (string $html) => app(RendererRegistry::class)
+        ->render(ContentFormat::RichText, $html);
+
+    expect($render('<p><span style="color: #dc2626">červeně</span></p>'))
+        ->toContain('color: #dc2626')
+        ->and($render('<p><span style="font-size: 1.25em">větší</span></p>'))
+        ->toContain('font-size: 1.25em')
+        ->and($render('<p style="text-align: center">na střed</p>'))
+        ->toContain('text-align: center');
+
+    // Co editor nevyrábí, se zahodí – včetně věcí, které umí načíst obsah zvenčí.
+    $nasty = $render('<p style="background-image: url(https://zlo.test/x.png); position: fixed; color: red">text</p>');
+
+    expect($nasty)->toContain('color: red')
+        ->not->toContain('background-image')
+        ->not->toContain('position')
+        ->not->toContain('zlo.test');
+});
+
+it('keeps a table with merged cells and a header row', function () {
+    $html = app(RendererRegistry::class)->render(
+        ContentFormat::RichText,
+        '<table><thead><tr><th colspan="2">Hlavička</th></tr></thead>'
+        .'<tbody><tr><td>a</td><td>b</td></tr></tbody></table>'
+    );
+
+    expect($html)->toContain('<th colspan="2">')->toContain('<td>a</td>');
+});
+
+it('keeps underline, subscript and superscript', function () {
+    $html = app(RendererRegistry::class)->render(
+        ContentFormat::RichText,
+        '<p><u>podtrženo</u> H<sub>2</sub>O a m<sup>2</sup></p>'
+    );
+
+    expect($html)->toContain('<u>')->toContain('<sub>')->toContain('<sup>');
+});

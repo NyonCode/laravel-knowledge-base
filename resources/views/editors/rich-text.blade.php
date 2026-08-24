@@ -43,22 +43,41 @@
                     this.active = {
                         bold: this.editor.isActive('bold'),
                         italic: this.editor.isActive('italic'),
-                        code: this.editor.isActive('code'),
+                        underline: this.editor.isActive('underline'),
                         strike: this.editor.isActive('strike'),
-                        table: this.editor.isActive('table'),
+                        code: this.editor.isActive('code'),
+                        highlight: this.editor.isActive('highlight'),
                         h2: this.editor.isActive('heading', { level: 2 }),
                         h3: this.editor.isActive('heading', { level: 3 }),
                         bullet: this.editor.isActive('bulletList'),
                         ordered: this.editor.isActive('orderedList'),
+                        listItem: this.editor.isActive('listItem'),
                         quote: this.editor.isActive('blockquote'),
                         codeBlock: this.editor.isActive('codeBlock'),
                         link: this.editor.isActive('link'),
+                        table: this.editor.isActive('table'),
+                        align: ['left', 'center', 'right'].find(a => this.editor.isActive({ textAlign: a })) ?? null,
                     }
                 }
 
                 this.editor.on('transaction', sync)
                 sync()
             })
+        },
+
+
+        /* Barva písma; „inherit“ ji odebere. */
+        color(value) {
+            value === 'inherit' || value === ''
+                ? this.run((chain) => chain.unsetTextColor())
+                : this.run((chain) => chain.setTextColor(value))
+        },
+
+        /* Velikost písma v em, ne v px: článek se čte i na telefonu. */
+        size(value) {
+            value === ''
+                ? this.run((chain) => chain.unsetFontSize())
+                : this.run((chain) => chain.setFontSize(value))
         },
 
         run(command) {

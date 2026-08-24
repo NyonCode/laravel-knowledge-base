@@ -45,10 +45,13 @@
                         this.active = {
                             bold: this.editor.isActive('bold'),
                             italic: this.editor.isActive('italic'),
+                            underline: this.editor.isActive('underline'),
                             strike: this.editor.isActive('strike'),
                             code: this.editor.isActive('code'),
+                            highlight: this.editor.isActive('highlight'),
                             bullet: this.editor.isActive('bulletList'),
                             ordered: this.editor.isActive('orderedList'),
+                            listItem: this.editor.isActive('listItem'),
                             link: this.editor.isActive('link'),
                         }
                     }
@@ -56,6 +59,21 @@
                     this.editor.on('transaction', sync)
                     sync()
                 })
+            },
+
+
+            /* Barva písma; „inherit“ ji odebere. */
+            color(value) {
+                value === 'inherit' || value === ''
+                    ? this.run((chain) => chain.unsetTextColor())
+                    : this.run((chain) => chain.setTextColor(value))
+            },
+
+            /* Velikost písma v em, ne v px: článek se čte i na telefonu. */
+            size(value) {
+                value === ''
+                    ? this.run((chain) => chain.unsetFontSize())
+                    : this.run((chain) => chain.setFontSize(value))
             },
 
             run(command) { command(this.editor.chain().focus()).run() },

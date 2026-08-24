@@ -46,7 +46,51 @@ final class Html
 
     public static function sanitize(string $html): string
     {
-        return (self::$sanitizer ??= new HtmlSanitizer(self::config()))->sanitize($html);
+        $clean = (self::$sanitizer ??= new HtmlSanitizer(self::config()))->sanitize($html);
+
+        return self::filterStyles($clean);
+    }
+
+    /**
+     * Z atributu `style` nechá jen to, co editor opravdu vyrábí.
+     *
+     * Barvu písma, podbarvení a velikost TipTap vykresluje inline a bez
+     * povoleného `style` by z formátování nezbylo nic. Povolit `style` celý je
+     * ale zbytečně široké: CSS umí načítat obsah zvenčí a v starších
+     * prohlížečích i spouštět kód. Projde proto čtveřice vlastností a jen
+     * hodnoty bez závorek a schémat — `url(...)` ani `expression(...)` se přes
+     * to nedostane.
+     */
+    private static function filterStyles(string $html): string
+    {
+        return (string) preg_replace_callback(
+            '/\sstyle="([^"]*)"/i',
+            static function (array $match): string {
+                $safe = [];
+
+                foreach (explode(';', $match[1]) as $declaration) {
+                    [$property, $value] = array_pad(explode(':', $declaration, 2), 2, '');
+
+                    $property = mb_strtolower(trim($property));
+                    $value = trim((string) $value);
+
+                    $allowed = ['color', 'background-color', 'font-size', 'text-align'];
+
+                    if (! in_array($property, $allowed, true) || $value === '') {
+                        continue;
+                    }
+
+                    if (! preg_match('/^[#a-z0-9 ,.%-]+$/i', $value)) {
+                        continue;
+                    }
+
+                    $safe[] = $property.': '.$value;
+                }
+
+                return $safe === [] ? '' : ' style="'.implode('; ', $safe).'"';
+            },
+            $html
+        );
     }
 
     /**
@@ -104,18 +148,25 @@ final class Html
     {
         return (new HtmlSanitizerConfig)
             ->allowSafeElements()
-            ->allowElement('h2', ['id', 'class'])
-            ->allowElement('h3', ['id', 'class'])
+            ->allowElement('h2', ['id', 'class', 'style'])
+            ->allowElement('h3', ['id', 'class', 'style'])
             ->allowElement('h4', ['id', 'class'])
-            ->allowElement('table', ['class'])
+            ->allowElement('table', ['class', 'style'])
+            ->allowElement('colgroup')
+            ->allowElement('col', ['style'])
+            ->allowElement('p', ['class', 'style'])
             ->allowElement('thead')
             ->allowElement('tbody')
             ->allowElement('tr')
-            ->allowElement('th', ['align', 'colspan', 'rowspan'])
-            ->allowElement('td', ['align', 'colspan', 'rowspan'])
+            ->allowElement('th', ['align', 'colspan', 'rowspan', 'style'])
+            ->allowElement('td', ['align', 'colspan', 'rowspan', 'style'])
             ->allowElement('pre', ['class'])
             ->allowElement('code', ['class'])
-            ->allowElement('span', ['class'])
+            ->allowElement('span', ['class', 'style'])
+            ->allowElement('mark', ['class', 'style'])
+            ->allowElement('u')
+            ->allowElement('sub')
+            ->allowElement('sup')
             ->allowElement('div', ['class'])
             ->allowElement('figure', ['class'])
             ->allowElement('details', ['class', 'open'])

@@ -8,35 +8,111 @@
     Aktivní stav se čte z editoru (`active`), nedrží se vedle něj. Druhá kopie
     pravdy se rozejde ve chvíli, kdy někdo použije klávesovou zkratku.
 
-    `$compact` schová to, co se do bloku nevejde (tabulky, obrázky, undo):
-    v bloku se píše odstavec, ne stránka.
+    `$compact` schová to, co se do bloku nevejde (nadpisy, zarovnání, tabulky,
+    undo): v bloku se píše odstavec, ne stránka.
 --}}
 @php
     $compact = $compact ?? false;
     $btn = 'rounded px-2 py-1 text-xs transition hover:bg-zinc-200 dark:hover:bg-zinc-800';
     $on = 'bg-zinc-900 text-white hover:bg-zinc-900 dark:bg-white dark:text-zinc-900';
     $off = 'text-zinc-600 dark:text-zinc-300';
+
+    // Pevná paleta, ne volný výběr barvy. Deset článků od tří lidí s libovolným
+    // odstínem vypadá jako deset webů; tohle jsou barvy, které projdou i v
+    // tmavém režimu.
+    $palette = [
+        'inherit' => __('knowledge-base::kb.editor.color_default'),
+        '#dc2626' => __('knowledge-base::kb.editor.color_red'),
+        '#ea580c' => __('knowledge-base::kb.editor.color_orange'),
+        '#16a34a' => __('knowledge-base::kb.editor.color_green'),
+        '#0284c7' => __('knowledge-base::kb.editor.color_blue'),
+        '#7c3aed' => __('knowledge-base::kb.editor.color_purple'),
+        '#71717a' => __('knowledge-base::kb.editor.color_gray'),
+    ];
+
+    $highlights = [
+        '#fef08a' => __('knowledge-base::kb.editor.color_yellow'),
+        '#bbf7d0' => __('knowledge-base::kb.editor.color_green'),
+        '#bfdbfe' => __('knowledge-base::kb.editor.color_blue'),
+        '#fecaca' => __('knowledge-base::kb.editor.color_red'),
+        '#e9d5ff' => __('knowledge-base::kb.editor.color_purple'),
+    ];
 @endphp
 
 <div class="flex flex-wrap items-center gap-1 border-b border-zinc-200 bg-zinc-50 px-2 py-1.5 dark:border-zinc-800 dark:bg-zinc-950">
     @unless ($compact)
         <button type="button" x-on:click="run(c => c.toggleHeading({ level: 2 }))" :class="active.h2 ? '{{ $on }}' : '{{ $off }}'" class="{{ $btn }} font-semibold">H2</button>
         <button type="button" x-on:click="run(c => c.toggleHeading({ level: 3 }))" :class="active.h3 ? '{{ $on }}' : '{{ $off }}'" class="{{ $btn }} font-semibold">H3</button>
+
+        <select x-on:change="size($event.target.value); $event.target.value = ''"
+            class="rounded border-zinc-300 py-0.5 pl-2 pr-6 text-xs text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300">
+            <option value="">{{ __('knowledge-base::kb.editor.font_size') }}</option>
+            @foreach (['' => __('knowledge-base::kb.editor.size_default'), '0.875em' => __('knowledge-base::kb.editor.size_small'), '1.25em' => __('knowledge-base::kb.editor.size_large'), '1.5em' => __('knowledge-base::kb.editor.size_huge')] as $value => $label)
+                <option value="{{ $value }}">{{ $label }}</option>
+            @endforeach
+        </select>
+
         <span class="mx-1 h-4 w-px bg-zinc-300 dark:bg-zinc-700"></span>
     @endunless
 
     <button type="button" x-on:click="run(c => c.toggleBold())" :class="active.bold ? '{{ $on }}' : '{{ $off }}'" class="{{ $btn }} font-bold">B</button>
     <button type="button" x-on:click="run(c => c.toggleItalic())" :class="active.italic ? '{{ $on }}' : '{{ $off }}'" class="{{ $btn }} italic">I</button>
+    <button type="button" x-on:click="run(c => c.toggleUnderline())" :class="active.underline ? '{{ $on }}' : '{{ $off }}'" class="{{ $btn }} underline">U</button>
     <button type="button" x-on:click="run(c => c.toggleStrike())" :class="active.strike ? '{{ $on }}' : '{{ $off }}'" class="{{ $btn }} line-through">S</button>
     <button type="button" x-on:click="run(c => c.toggleCode())" :class="active.code ? '{{ $on }}' : '{{ $off }}'" class="{{ $btn }} font-mono">&lt;/&gt;</button>
+
+    {{-- Barva písma a podbarvení: dva rozbalovací vzorníky, ne barevný kruh. --}}
+    <div class="relative" x-data="{ open: false }" x-on:click.outside="open = false">
+        <button type="button" x-on:click="open = ! open" class="{{ $btn }} {{ $off }}" title="{{ __('knowledge-base::kb.editor.text_color') }}">A</button>
+        <div x-show="open" x-cloak class="absolute left-0 top-8 z-30 flex gap-1 rounded-lg border border-zinc-200 bg-white p-2 shadow-lg dark:border-zinc-700 dark:bg-zinc-900">
+            @foreach ($palette as $value => $label)
+                <button type="button" title="{{ $label }}"
+                    x-on:click="color(@js($value)); open = false"
+                    class="h-5 w-5 rounded-full border border-zinc-300 dark:border-zinc-600"
+                    style="background: {{ $value === 'inherit' ? 'transparent' : $value }}"></button>
+            @endforeach
+        </div>
+    </div>
+
+    <div class="relative" x-data="{ open: false }" x-on:click.outside="open = false">
+        <button type="button" x-on:click="open = ! open" :class="active.highlight ? '{{ $on }}' : '{{ $off }}'" class="{{ $btn }}" title="{{ __('knowledge-base::kb.editor.text_background') }}">▧</button>
+        <div x-show="open" x-cloak class="absolute left-0 top-8 z-30 flex gap-1 rounded-lg border border-zinc-200 bg-white p-2 shadow-lg dark:border-zinc-700 dark:bg-zinc-900">
+            <button type="button" title="{{ __('knowledge-base::kb.editor.color_default') }}"
+                x-on:click="run(c => c.unsetHighlight()); open = false"
+                class="h-5 w-5 rounded-full border border-zinc-300 dark:border-zinc-600"></button>
+            @foreach ($highlights as $value => $label)
+                <button type="button" title="{{ $label }}"
+                    x-on:click="run(c => c.setHighlight({ color: @js($value) })); open = false"
+                    class="h-5 w-5 rounded-full border border-zinc-300 dark:border-zinc-600"
+                    style="background: {{ $value }}"></button>
+            @endforeach
+        </div>
+    </div>
 
     <span class="mx-1 h-4 w-px bg-zinc-300 dark:bg-zinc-700"></span>
 
     <button type="button" x-on:click="run(c => c.toggleBulletList())" :class="active.bullet ? '{{ $on }}' : '{{ $off }}'" class="{{ $btn }}">&bull;</button>
     <button type="button" x-on:click="run(c => c.toggleOrderedList())" :class="active.ordered ? '{{ $on }}' : '{{ $off }}'" class="{{ $btn }}">1.</button>
+    {{-- Odsazení jde jen uvnitř seznamu, tak se jinde ani nenabízí. --}}
+    <button type="button" x-show="active.listItem" x-cloak x-on:click="run(c => c.sinkListItem('listItem'))" class="{{ $btn }} {{ $off }}" title="{{ __('knowledge-base::kb.editor.indent') }}">&rsaquo;&rsaquo;</button>
+    <button type="button" x-show="active.listItem" x-cloak x-on:click="run(c => c.liftListItem('listItem'))" class="{{ $btn }} {{ $off }}" title="{{ __('knowledge-base::kb.editor.outdent') }}">&lsaquo;&lsaquo;</button>
     <button type="button" x-on:click="link()" :class="active.link ? '{{ $on }}' : '{{ $off }}'" class="{{ $btn }}">{{ __('knowledge-base::kb.editor.link') }}</button>
 
     @unless ($compact)
+        <span class="mx-1 h-4 w-px bg-zinc-300 dark:bg-zinc-700"></span>
+
+        {{-- Zarovnání a zpět/znovu jako SVG, ne Unicode: znaky jako ⯇ nebo ↺
+             půlka fontů nemá a vykreslí místo nich prázdný čtvereček. --}}
+        @foreach ([
+            'left' => 'M3 5h14M3 9h9M3 13h14M3 17h9',
+            'center' => 'M3 5h14M6 9h8M3 13h14M6 17h8',
+            'right' => 'M3 5h14M8 9h9M3 13h14M8 17h9',
+        ] as $align => $path)
+            <button type="button" x-on:click="run(c => c.setTextAlign(@js($align)))" :class="active.align === @js($align) ? '{{ $on }}' : '{{ $off }}'" class="{{ $btn }}" title="{{ __('knowledge-base::kb.editor.align_'.$align) }}">
+                <svg class="h-3.5 w-3.5" viewBox="0 0 20 22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="{{ $path }}" /></svg>
+            </button>
+        @endforeach
+
         <button type="button" x-on:click="run(c => c.toggleBlockquote())" :class="active.quote ? '{{ $on }}' : '{{ $off }}'" class="{{ $btn }}">&ldquo;</button>
         <button type="button" x-on:click="run(c => c.toggleCodeBlock())" :class="active.codeBlock ? '{{ $on }}' : '{{ $off }}'" class="{{ $btn }} font-mono">```</button>
 
@@ -44,13 +120,30 @@
 
         <button type="button" x-on:click="$wire.openImagePicker()" class="{{ $btn }} {{ $off }}">{{ __('knowledge-base::kb.editor.image') }}</button>
         <button type="button" x-on:click="run(c => c.insertTable({ rows: 3, cols: 3, withHeaderRow: true }))" class="{{ $btn }} {{ $off }}">{{ __('knowledge-base::kb.editor.table') }}</button>
-        <button type="button" x-show="active.table" x-cloak x-on:click="run(c => c.addRowAfter())" class="{{ $btn }} {{ $off }}">+{{ __('knowledge-base::kb.editor.row') }}</button>
-        <button type="button" x-show="active.table" x-cloak x-on:click="run(c => c.addColumnAfter())" class="{{ $btn }} {{ $off }}">+{{ __('knowledge-base::kb.editor.column') }}</button>
-        <button type="button" x-show="active.table" x-cloak x-on:click="run(c => c.deleteTable())" class="{{ $btn }} {{ $off }}">&minus;{{ __('knowledge-base::kb.editor.table') }}</button>
+
+        {{-- Ovládání tabulky se ukáže, jen když v ní kurzor stojí: deset
+             tlačítek navíc na stránce bez tabulky je jen šum. --}}
+        <template x-if="active.table">
+            <span class="flex flex-wrap items-center gap-1 rounded bg-zinc-200/60 px-1 py-0.5 dark:bg-zinc-800/60">
+                <button type="button" x-on:click="run(c => c.addRowBefore())" class="{{ $btn }} {{ $off }}" title="{{ __('knowledge-base::kb.editor.row_before') }}">↑+</button>
+                <button type="button" x-on:click="run(c => c.addRowAfter())" class="{{ $btn }} {{ $off }}" title="{{ __('knowledge-base::kb.editor.row_after') }}">↓+</button>
+                <button type="button" x-on:click="run(c => c.deleteRow())" class="{{ $btn }} {{ $off }}" title="{{ __('knowledge-base::kb.editor.row_delete') }}">&minus;{{ __('knowledge-base::kb.editor.row') }}</button>
+                <button type="button" x-on:click="run(c => c.addColumnBefore())" class="{{ $btn }} {{ $off }}" title="{{ __('knowledge-base::kb.editor.column_before') }}">←+</button>
+                <button type="button" x-on:click="run(c => c.addColumnAfter())" class="{{ $btn }} {{ $off }}" title="{{ __('knowledge-base::kb.editor.column_after') }}">→+</button>
+                <button type="button" x-on:click="run(c => c.deleteColumn())" class="{{ $btn }} {{ $off }}" title="{{ __('knowledge-base::kb.editor.column_delete') }}">&minus;{{ __('knowledge-base::kb.editor.column') }}</button>
+                <button type="button" x-on:click="run(c => c.toggleHeaderRow())" class="{{ $btn }} {{ $off }}" title="{{ __('knowledge-base::kb.editor.header_row') }}">⊤</button>
+                <button type="button" x-on:click="run(c => c.mergeOrSplit())" class="{{ $btn }} {{ $off }}" title="{{ __('knowledge-base::kb.editor.merge_cells') }}">⊞</button>
+                <button type="button" x-on:click="run(c => c.deleteTable())" class="{{ $btn }} {{ $off }}" title="{{ __('knowledge-base::kb.editor.table_delete') }}">&minus;{{ __('knowledge-base::kb.editor.table') }}</button>
+            </span>
+        </template>
 
         <span class="ml-auto flex items-center gap-1">
-            <button type="button" x-on:click="run(c => c.undo())" class="{{ $btn }} {{ $off }}" aria-label="{{ __('knowledge-base::kb.editor.undo') }}">&#8630;</button>
-            <button type="button" x-on:click="run(c => c.redo())" class="{{ $btn }} {{ $off }}" aria-label="{{ __('knowledge-base::kb.editor.redo') }}">&#8631;</button>
+            <button type="button" x-on:click="run(c => c.undo())" class="{{ $btn }} {{ $off }}" aria-label="{{ __('knowledge-base::kb.editor.undo') }}">
+                <svg class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4 3 8l4 4M3 8h9a5 5 0 0 1 0 10h-4" /></svg>
+            </button>
+            <button type="button" x-on:click="run(c => c.redo())" class="{{ $btn }} {{ $off }}" aria-label="{{ __('knowledge-base::kb.editor.redo') }}">
+                <svg class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m13 4 4 4-4 4M17 8H8a5 5 0 0 0 0 10h4" /></svg>
+            </button>
         </span>
     @endunless
 </div>
