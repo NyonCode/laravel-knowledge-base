@@ -87,11 +87,15 @@
                     this.raw().on('transaction', sync)
                     sync()
 
-                    @if ($preset)
+                    @if ($preset || $tools === 'table')
                         // Jen do prázdného bloku: u rozepsaného obsahu by
                         // předvolba přepsala, co v něm autor má.
                         if (this.raw().isEmpty) {
-                            this.run((chain) => chain.toggle{{ ucfirst($preset) }}())
+                            @if ($tools === 'table')
+                                this.run((chain) => chain.insertTable({ rows: 3, cols: 3, withHeaderRow: true }))
+                            @else
+                                this.run((chain) => chain.toggle{{ ucfirst($preset) }}())
+                            @endif
                         }
                     @endif
                 })
