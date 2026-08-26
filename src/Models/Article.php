@@ -55,6 +55,22 @@ class Article extends Model
     /** @use HasFactory<ArticleFactory> */
     use HasFactory;
 
+    /**
+     * Kolik čtenářů musí stránku vidět, než se její hodnocení bere vážně.
+     *
+     * Bez prahu by každou novou stránku shodil jeden nespokojený hlas.
+     */
+    public const ATTENTION_MIN_VIEWS = 20;
+
+    /** Proč článek leží ve frontě údržby. Pořadí je pořadí odznaků i čipů. */
+    public const REASON_DRAFT = 'draft';
+
+    public const REASON_STALE = 'stale';
+
+    public const REASON_UNHELPFUL = 'unhelpful';
+
+    public const REASONS = [self::REASON_DRAFT, self::REASON_STALE, self::REASON_UNHELPFUL];
+
     protected $guarded = [];
 
     protected $casts = [
@@ -187,12 +203,66 @@ class Article extends Model
      *
      * Views alone say a page is findable; the score says it works. Only the
      * two together point at the page worth fixing first.
+     *
+     * Porovnávají se hlasy, ne zaokrouhlené procento: `helpfulness()` je číslo
+     * na displej a stránka se 49,7 % se po zaokrouhlení tváří jako padesát.
+     * {@see scopeNeedsAttention()} vyslovuje tutéž podmínku v SQL.
      */
     public function needsAttention(): bool
     {
-        $score = $this->helpfulness();
+        return $this->unhelpful_count > $this->helpful_count
+            && $this->views_count >= self::ATTENTION_MIN_VIEWS;
+    }
 
-        return $score !== null && $score < 50 && $this->views_count >= 20;
+    /**
+     * Odkdy článek nikdo nepotvrdil, nebo null, když ho nepotvrdil nikdy.
+     *
+     * Bez `updated_at`, který {@see isStale()} bere jako poslední záchranu:
+     * editace není ověření a v odznaku by tvrdila, že se článek kontroloval.
+     */
+    public function uncheckedSince(): ?Carbon
+    {
+        return $this->reviewed_at ?? $this->published_at;
+    }
+
+    /**
+     * Proč článek leží ve frontě údržby — prázdné pole znamená, že neleží.
+     *
+     * Čte tytéž hodiny jako {@see scopeStale()}, tedy společnou lhůtu, ne
+     * vlastní lhůtu článku, kterou ctí {@see isStale()} pro čtenáře. Frontu
+     * vybírá dotaz a tohle jen vysvětluje řádek, který dotaz vrátil — kdyby
+     * si každý počítal po svém, seznam by uměl ukázat článek bez důvodu.
+     *
+     * Zastaralost se u konceptu nehlásí: nedopsaná stránka nehnije, chybí.
+     *
+     * @return list<string>
+     */
+    public function attentionReasons(): array
+    {
+        $reasons = [];
+
+        if ($this->status === ArticleStatus::Draft) {
+            $reasons[] = self::REASON_DRAFT;
+        }
+
+        if ($this->isLive() && self::isPastReviewClock($this->uncheckedSince() ?? $this->updated_at)) {
+            $reasons[] = self::REASON_STALE;
+        }
+
+        if ($this->needsAttention()) {
+            $reasons[] = self::REASON_UNHELPFUL;
+        }
+
+        return $reasons;
+    }
+
+    /** Je tenhle okamžik za společnou ověřovací lhůtou? Bez hodin nikdy. */
+    protected static function isPastReviewClock(?Carbon $checked): bool
+    {
+        $interval = (int) (Settings::nullableInt('authoring.review_interval_days') ?? 0);
+
+        return $interval > 0
+            && ($checked === null || $checked->copy()->addDays($interval)->isPast());
     }
 
     /** Rough reading time in minutes, never zero — "0 min" reads as broken. */
@@ -256,10 +326,28 @@ class Article extends Model
 
         $cutoff = now()->subDays($interval);
 
-        $query->live()->where(function (Builder $inner) use ($cutoff) {
-            $inner
-                ->whereNull('reviewed_at')
-                ->orWhere('reviewed_at', '<=', $cutoff);
-        });
+        // Stejná trojice jako v isStale(): čerstvě vydaná stránka, kterou
+        // ještě nikdo nepotvrdil, není zastaralá — jen nová. Hledat prázdné
+        // `reviewed_at` by ji do fronty poslalo v den vydání.
+        $query->live()->whereRaw(
+            'coalesce(reviewed_at, published_at, updated_at) <= ?',
+            [$cutoff]
+        );
+    }
+
+    /**
+     * Read a lot and rated badly, in SQL.
+     *
+     * Totéž pravidlo jako {@see needsAttention()}, jen vyslovené v dotazu:
+     * fronta údržby je stránkovaná, takže filtrovat v PHP by znamenalo načíst
+     * celou bázi kvůli dvaceti řádkům.
+     *
+     * @param  Builder<self>  $query
+     */
+    public function scopeNeedsAttention(Builder $query): void
+    {
+        $query
+            ->whereColumn('unhelpful_count', '>', 'helpful_count')
+            ->where('views_count', '>=', self::ATTENTION_MIN_VIEWS);
     }
 }
