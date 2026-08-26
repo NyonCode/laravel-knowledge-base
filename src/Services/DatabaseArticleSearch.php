@@ -54,14 +54,16 @@ final class DatabaseArticleSearch implements ArticleSearch
 
         $this->audience->scopeVisible($query, $reader);
 
+        $operator = $this->likeOperator();
+
         foreach ($terms as $word) {
             $like = '%'.$this->escape($word).'%';
 
-            $query->where(function (Builder $inner) use ($like) {
+            $query->where(function (Builder $inner) use ($like, $operator) {
                 $inner
-                    ->where('title', 'like', $like)
-                    ->orWhere('excerpt', 'like', $like)
-                    ->orWhere('body', 'like', $like);
+                    ->where('title', $operator, $like)
+                    ->orWhere('excerpt', $operator, $like)
+                    ->orWhere('body', $operator, $like);
             });
         }
 
@@ -121,13 +123,36 @@ final class DatabaseArticleSearch implements ArticleSearch
             foreach ($weights as $column => $weight) {
                 // Column names come from config, never from the request, so
                 // they are quoted as identifiers and not bound.
-                $parts[] = '(case when '.$this->column($column).' like ? then ? else 0 end)';
+                // Dvě větve, ne poskládaný operátor: `$parts` musí zůstat
+                // literal-string, protože z něj vzniká ORDER BY.
+                $parts[] = $this->isPostgres()
+                    ? '(case when '.$this->column($column).' ilike ? then ? else 0 end)'
+                    : '(case when '.$this->column($column).' like ? then ? else 0 end)';
                 $bindings[] = '%'.$this->escape($word).'%';
                 $bindings[] = (int) $weight;
             }
         }
 
         return [implode(' + ', $parts), $bindings];
+    }
+
+    /**
+     * `like`, které se chová všude stejně.
+     *
+     * Na PostgreSQL je `like` case-sensitive, takže „webhook" tam nenajde
+     * článek „Webhook setup". To není nastavení citlivosti, to je rozbité
+     * hledání: návštěvník píše malými písmeny a čeká, že mu to najde stránku.
+     * MySQL i SQLite se chovají case-insensitive samy, Postgres na to má
+     * `ilike`.
+     */
+    private function likeOperator(): string
+    {
+        return $this->isPostgres() ? 'ilike' : 'like';
+    }
+
+    private function isPostgres(): bool
+    {
+        return (new Article)->getConnection()->getDriverName() === 'pgsql';
     }
 
     /**

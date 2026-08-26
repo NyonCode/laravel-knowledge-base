@@ -1,0 +1,149 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Nový push na tutéž větev ruší předchozí běh: matice je široká a doběhnutý
+# výsledek nad přepsaným commitem stejně nikdo nečte.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Široká matice na SQLite v paměti: tady se hlídá, že balíček drží napříč
+  # verzemi PHP a Laravelu. Rychlé, protože se nic neinstaluje.
+  tests:
+    name: PHP ${{ matrix.php }} · Laravel ${{ matrix.laravel }} · sqlite
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.2', '8.3', '8.4']
+        laravel: [12, 13]
+        include:
+          # Verze Laravelu se řídí testbenchem, ne `laravel/framework`:
+          # ten si ho přitáhne sám a testbench je jediné, co je potřeba připnout.
+          - laravel: 12
+            testbench: '^10.0'
+          - laravel: 13
+            testbench: '^11.0'
+        exclude:
+          # testbench 11 (tedy Laravel 13) žádá PHP ^8.3 — tahle kombinace
+          # neexistuje, ne že by se přeskakovala.
+          - php: '8.2'
+            laravel: 13
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: dom, mbstring, sqlite3, pdo_sqlite
+          coverage: none
+
+      - name: Připnout Laravel ${{ matrix.laravel }}
+        run: composer require "orchestra/testbench:${{ matrix.testbench }}" --dev --no-interaction --no-update
+
+      - uses: ramsey/composer-install@v3
+        with:
+          dependency-versions: highest
+          composer-options: --prefer-dist
+
+      - run: vendor/bin/pest
+
+  # Skutečné databáze. Užší matice schválně: rozdíly, které tenhle job hlídá,
+  # jsou v ovladači, ne ve verzi PHP.
+  database:
+    name: ${{ matrix.database }} · Laravel ${{ matrix.laravel }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        database: [mysql, pgsql]
+        laravel: [12, 13]
+        include:
+          - laravel: 12
+            testbench: '^10.0'
+          - laravel: 13
+            testbench: '^11.0'
+
+    # Oba servery běží v každém běhu, i když se použije vždycky jen jeden:
+    # `services` se v Actions nedá podmínit maticí. Start stojí pár vteřin,
+    # zdvojený job by stál údržbu.
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: password
+          MYSQL_DATABASE: knowledge_base
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -ppassword"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: knowledge_base
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd=pg_isready
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    env:
+      DB_DRIVER: ${{ matrix.database }}
+      DB_HOST: 127.0.0.1
+      DB_DATABASE: knowledge_base
+      DB_PASSWORD: password
+      DB_PORT: ${{ matrix.database == 'pgsql' && '5432' || '3306' }}
+      DB_USERNAME: ${{ matrix.database == 'pgsql' && 'postgres' || 'root' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: dom, mbstring, pdo_mysql, pdo_pgsql
+          coverage: none
+
+      - name: Připnout Laravel ${{ matrix.laravel }}
+        run: composer require "orchestra/testbench:${{ matrix.testbench }}" --dev --no-interaction --no-update
+
+      - uses: ramsey/composer-install@v3
+        with:
+          dependency-versions: highest
+          composer-options: --prefer-dist
+
+      - run: vendor/bin/pest
+
+  static:
+    name: styl a statická analýza
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: dom, mbstring, sqlite3, pdo_sqlite
+          coverage: none
+
+      - uses: ramsey/composer-install@v3
+        with:
+          dependency-versions: highest
+          composer-options: --prefer-dist
+
+      - run: vendor/bin/pint --test
+      - run: vendor/bin/phpstan analyse -c phpstan.neon.dist --memory-limit=1G
