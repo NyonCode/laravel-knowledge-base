@@ -35,7 +35,6 @@
                     // `false` = neposílat request; hodnota odejde se zbytkem
                     // formuláře. Request na každý úhoz by z psaní udělal čekání.
                     onChange: (html) => $wire.set('{{ $statePath }}', html, false),
-                    bubble: this.$refs.bubble,
                     floating: this.$refs.floating,
                     handle: this.$refs.handle,
                     upload: (file) => this.uploadImage(file),
@@ -224,7 +223,6 @@
          přemisťuje sám a morph by je vracel na místo. --}}
     <template x-if="ready">
         <div>
-            @include('knowledge-base::editors._bubble-menu')
             @include('knowledge-base::editors._floating-menu')
             {{-- Úchyt na okraji odstavce; TipTap ho polohuje podle toho, nad
                  čím je myš. --}}

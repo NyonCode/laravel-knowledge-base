@@ -50,7 +50,6 @@
                         // `compact`: úchyt by v bloku soupeřil s přetahováním
                         // samotných bloků a nabídka vložení s jejich paletou.
                         compact: true,
-                        bubble: this.$refs.bubble,
                         upload: (file) => this.uploadImage(file),
                         mentions: @js($this->mentionTargets()),
                         placeholder: @js(__('knowledge-base::kb.editor.placeholder')),
@@ -219,10 +218,6 @@
 
         <textarea x-show="! ready" rows="3" wire:model.blur="{{ $statePath }}"
             class="w-full border-0 p-3 text-sm focus:ring-0 dark:bg-zinc-950 dark:text-zinc-100"></textarea>
-
-        <template x-if="ready">
-            <div>@include('knowledge-base::editors._bubble-menu')</div>
-        </template>
 
         <div wire:ignore x-show="ready">
             <div

@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
 use NyonCode\KnowledgeBase\Enums\ArticleKind;
 use NyonCode\KnowledgeBase\Enums\ArticleStatus;
+use NyonCode\KnowledgeBase\Enums\ContentFormat;
 use NyonCode\KnowledgeBase\Enums\Visibility;
 use NyonCode\KnowledgeBase\Models\Article;
 
@@ -27,6 +28,9 @@ class ArticleFactory extends Factory
             'body' => '## '.fake()->sentence(3)."\n\n".fake()->paragraph(),
             'body_html' => '<h2 id="x">'.fake()->sentence(3).'</h2><p>'.fake()->paragraph().'</p>',
             'kind' => ArticleKind::HowTo,
+            // Sloupec má výchozí hodnotu v databázi, jenže vyrobený model ji
+            // do refreshe nezná — a editor se článku na formát ptá.
+            'format' => ContentFormat::Markdown,
             'status' => ArticleStatus::Published,
             'visibility' => Visibility::Public,
             'published_at' => now(),

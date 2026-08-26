@@ -15,19 +15,26 @@
     $language = trim((string) ($data['language'] ?? '')) ?: null;
     $title = trim((string) ($data['title'] ?? '')) ?: null;
 
-    $options = array_filter(
-        [
-            'lineNumbers' => $data['line_numbers'] ?? null,
-            'diffIndicators' => $data['diff_indicators'] ?? null,
-            'torchlightAnnotations' => $data['annotations'] ?? null,
-        ],
-        static fn ($value) => $value !== null && $value !== ''
-    );
+    // Vypíše se **jen volba, která se liší od výchozí**. Zvýrazňovač dostává
+    // volby jednoho bloku tak, že se kódu předřadí servisní komentář — a ten
+    // se v ukázce ukáže pokaždé, když ho zvýrazňovač nesní (výpadek API,
+    // jazyk, jehož komentáře nezná). Blok, kde autor nic nepřepnul, si tedy
+    // to riziko nemá proč kupovat: chová se přesně jako dřív.
+    $defaults = \NyonCode\KnowledgeBase\Support\Settings::array('editors.blocks.code');
 
-    $options = array_map(
-        static fn ($value) => filter_var($value, FILTER_VALIDATE_BOOLEAN),
-        $options
-    );
+    $options = [];
+
+    foreach (['line_numbers' => 'lineNumbers', 'diff_indicators' => 'diffIndicators'] as $field => $option) {
+        if (! array_key_exists($field, $data)) {
+            continue;
+        }
+
+        $value = filter_var($data[$field], FILTER_VALIDATE_BOOLEAN);
+
+        if ($value !== (bool) ($defaults[$field] ?? false)) {
+            $options[$option] = $value;
+        }
+    }
 @endphp
 <pre class="kb-code"
     @if ($language) data-lang="{{ $language }}" @endif

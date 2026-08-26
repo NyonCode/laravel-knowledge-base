@@ -179,6 +179,12 @@ final class KnowledgeBase
             $article->published_at = now();
         }
 
+        // Uložení **je** kontrola. Kdo článek právě přepsal, tím řekl víc než
+        // tlačítkem „pořád platí" — a bez tohohle razítka by mu stránka dál
+        // visela ve frontě „dlouho neověřené" a nabízela, ať potvrdí, co
+        // před vteřinou napsal.
+        $article->reviewed_at = now();
+
         $article->save();
 
         $this->pruneRevisions($article);

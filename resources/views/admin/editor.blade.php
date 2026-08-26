@@ -5,7 +5,13 @@
 <div class="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8" x-data>
     @include('knowledge-base::editors.image-picker')
 
-    <form wire:submit="save">
+    {{-- Schválně **ne** formulář. Tenhle editor se načítá dlouho (v každém
+         bloku sedí TipTap) a než Livewire stihne `wire:submit` odchytit,
+         odešle ho prohlížeč sám: stránka se znovu načte, rozepsané změny jsou
+         pryč a vypadá to, že tlačítko nic nedělá. Bez formuláře není co
+         odeslat — kliknutí před načtením Livewiru neudělá nic a po načtení
+         uloží. --}}
+    <div>
         <div class="flex flex-wrap items-center justify-between gap-3">
             <input
                 type="text"
@@ -13,13 +19,48 @@
                 placeholder="{{ __('knowledge-base::kb.admin.new') }}"
                 class="min-w-0 flex-1 border-0 bg-transparent p-0 text-2xl font-semibold tracking-tight text-zinc-900 placeholder:text-zinc-300 focus:ring-0 dark:text-white"
             />
-            <div class="flex items-center gap-2">
-                @if ($article?->exists)
-                    <button type="button" wire:click="markReviewed" class="rounded-lg border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-700 dark:border-zinc-700 dark:text-zinc-200">
+            {{-- `ready` je jediný signál, že Livewire už na stránce je:
+                 tlačítka se v HTML rodí vypnutá a zapne je až Alpine, který
+                 se načítá s ním. Kliknutí do té chvíle by nikam nedošlo a
+                 vypadalo by jako rozbité tlačítko. --}}
+            <div class="flex items-center gap-2" x-data="{ ready: false }" x-init="ready = true">
+                {{-- Potvrzení uložení. Samo zmizí: je to odpověď na kliknutí,
+                     ne stav článku — a po chvíli už jen mate. --}}
+                @if ($justSaved)
+                    <span
+                        x-data="{ shown: true }"
+                        x-init="setTimeout(() => shown = false, 4000)"
+                        x-show="shown"
+                        x-transition.opacity
+                        class="text-sm font-medium text-emerald-600 dark:text-emerald-400"
+                    >{{ __('knowledge-base::kb.admin.saved') }}</span>
+                @endif
+
+                {{-- Cesta zpět bez uložení. Odkaz, ne tlačítko: nic neodesílá
+                     a patří do historie prohlížeče jako každý jiný přechod. --}}
+                <a href="{{ \NyonCode\KnowledgeBase\Support\Routes::adminIndex() }}" wire:navigate class="rounded-lg px-3 py-1.5 text-sm font-medium text-zinc-500 transition hover:text-zinc-800 dark:hover:text-zinc-200">
+                    {{ __('knowledge-base::kb.admin.cancel') }}
+                </a>
+
+                {{-- Jen dokud je co potvrzovat. Uložení si razítko kontroly
+                     obstará samo, takže po každé úpravě tohle tlačítko zmizí;
+                     visí tu pro článek, který se otevřel, přečetl a nechal
+                     beze změny. --}}
+                @if ($article?->exists && $article->isStale())
+                    <button type="button" wire:click="markReviewed" disabled x-bind:disabled="! ready" class="disabled:opacity-40 rounded-lg border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-700 dark:border-zinc-700 dark:text-zinc-200">
                         {{ __('knowledge-base::kb.admin.mark_reviewed') }}
                     </button>
                 @endif
-                <button type="submit" class="rounded-lg bg-zinc-900 px-4 py-1.5 text-sm font-medium text-white dark:bg-white dark:text-zinc-900">
+
+                {{-- Nabízí se, dokud článek nevyšel ven; u zveřejněného by
+                     „uložit" znamenalo stáhnout ho z webu. --}}
+                @unless ($this->isPublished())
+                    <button type="button" wire:click="saveAsDraft" disabled x-bind:disabled="! ready" class="disabled:opacity-40 rounded-lg border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-700 dark:border-zinc-700 dark:text-zinc-200">
+                        {{ __('knowledge-base::kb.admin.save_draft') }}
+                    </button>
+                @endunless
+
+                <button type="button" wire:click="save" disabled x-bind:disabled="! ready" class="disabled:opacity-40 rounded-lg bg-zinc-900 px-4 py-1.5 text-sm font-medium text-white dark:bg-white dark:text-zinc-900">
                     {{ __('knowledge-base::kb.admin.save') }}
                 </button>
             </div>
@@ -159,5 +200,5 @@
                 </div>
             </aside>
         </div>
-    </form>
+    </div>
 </div>

@@ -39,8 +39,38 @@
     </label>
 
     {{-- Anotace se píšou do kódu, ne zaškrtávají: platí vždy na konkrétní
-         řádek, takže volba bloku pro ně není. --}}
-    <span class="basis-full font-mono">
+         řádek, takže volba bloku pro ně není.
+
+         Ukazuje se zápis **pro vybraný jazyk**, ne obecný tvar: anotace musí
+         být skutečný komentář, jinak se nezpracuje a zůstane v ukázce viset
+         jako text — a autor to zjistí až na hotové stránce. V JSONu je to
+         `// [tl! focus]`, v shellu `# [tl! focus]`, v HTML `<!-- [tl! focus] -->`. --}}
+    @php
+        $lang = $this->blockData[$index]['language'] ?? null;
+        $sample = fn (string $a) => \NyonCode\KnowledgeBase\Support\CodeComment::annotation($lang, $a);
+    @endphp
+    <span class="basis-full">
         {{ __('knowledge-base::kb.editor.block.code_annotations') }}
+        <span class="ml-1 font-mono text-zinc-600 dark:text-zinc-300">
+            {{ $sample('[tl! ++]') }} · {{ $sample('[tl! --]') }} ·
+            {{ $sample('[tl! focus]') }} · {{ $sample('[tl! collapse]') }}
+        </span>
     </span>
 </div>
+
+{{-- Náhled toutéž cestou jako hotová stránka, ne přibližný.
+
+     Zvýraznění, anotace i volby bloku vyhodnocuje až server, takže
+     z textarey se výsledek odhadnout nedá — a náhled, který by ho jen
+     napodobil, by lhal právě v tom, kvůli čemu se do něj člověk dívá.
+     Prázdný blok náhled nemá; viz ArticleEditor::previewFor(). --}}
+@php $codePreview = $this->previewFor($index); @endphp
+
+@if ($codePreview)
+    <div class="mt-3">
+        <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-zinc-400 dark:text-zinc-500">
+            {{ __('knowledge-base::kb.editor.block.code_preview') }}
+        </p>
+        <div class="kb-prose">{!! $codePreview !!}</div>
+    </div>
+@endif

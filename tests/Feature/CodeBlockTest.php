@@ -5,6 +5,7 @@ declare(strict_types=1);
 use NyonCode\KnowledgeBase\Enums\ContentFormat;
 use NyonCode\KnowledgeBase\Livewire\Admin\ArticleEditor;
 use NyonCode\KnowledgeBase\Services\RendererRegistry;
+use NyonCode\KnowledgeBase\Support\CodeComment;
 
 /*
  * Ukázka kódu popisuje sama sebe — jazyk, název souboru a volby jednoho bloku
@@ -145,4 +146,122 @@ it('does not invent a language for a block saved without one', function () {
     ]]));
 
     expect($rows[0])->not->toHaveKey('language');
+});
+
+it('previews a code block through the very pipeline the page uses', function () {
+    // Ne přibližný náhled: zvýraznění, anotace i volby bloku vyhodnocuje až
+    // server, takže napodobenina by lhala právě v tom, kvůli čemu se do
+    // náhledu člověk dívá.
+    $editor = new class extends ArticleEditor
+    {
+        /** @param  array<int, array<string, mixed>>  $rows */
+        public function seed(array $rows): void
+        {
+            $this->blockData = $rows;
+        }
+    };
+
+    $editor->seed([[
+        'type' => 'code',
+        'language' => 'php',
+        'title' => 'app/Foo.php',
+        'text' => 'echo 1;',
+        'line_numbers' => true,
+    ]]);
+
+    expect($editor->previewFor(0))
+        ->toContain('data-lang="php"')
+        ->toContain('data-title="app/Foo.php"')
+        ->toContain('echo 1;')
+        ->and(html_entity_decode((string) $editor->previewFor(0)))
+        ->toContain('"lineNumbers":true');
+});
+
+it('shows no preview for an empty block or a block of another type', function () {
+    // Rámeček s ničím uvnitř jen zabírá místo.
+    $editor = new class extends ArticleEditor
+    {
+        /** @param  array<int, array<string, mixed>>  $rows */
+        public function seed(array $rows): void
+        {
+            $this->blockData = $rows;
+        }
+    };
+
+    $editor->seed([
+        ['type' => 'code', 'language' => 'php', 'text' => '   '],
+        ['type' => 'text', 'text' => 'obyčejný odstavec'],
+    ]);
+
+    expect($editor->previewFor(0))->toBeNull()
+        ->and($editor->previewFor(1))->toBeNull()
+        ->and($editor->previewFor(99))->toBeNull();
+});
+
+it('keeps the editor standing when the highlighter fails', function () {
+    // Náhled je pohodlí, ne obsah: zvýrazňovač volá cizí službu a ta umí být
+    // nedostupná i nenastavená. Psát se musí dát dál i bez obrázku výsledku.
+    app()->bind(RendererRegistry::class, function (): RendererRegistry {
+        throw new RuntimeException('zvýrazňovač je mimo');
+    });
+
+    $editor = new class extends ArticleEditor
+    {
+        /** @param  array<int, array<string, mixed>>  $rows */
+        public function seed(array $rows): void
+        {
+            $this->blockData = $rows;
+        }
+    };
+
+    $editor->seed([['type' => 'code', 'language' => 'php', 'text' => 'echo 1;']]);
+
+    expect($editor->previewFor(0))->toBeNull();
+});
+
+it('stays quiet about options the author left alone', function () {
+    // Volby jednoho bloku se zvýrazňovači předávají servisním komentářem před
+    // kódem. Ten se v ukázce ukáže pokaždé, když ho zvýrazňovač nesní — blok,
+    // kde autor nic nepřepnul, si to riziko nemá proč kupovat.
+    $defaults = config('knowledge-base.editors.blocks.code');
+
+    $untouched = renderBlocks([[
+        'type' => 'code',
+        'data' => [
+            'language' => 'php',
+            'text' => 'echo 1;',
+            'line_numbers' => $defaults['line_numbers'],
+            'diff_indicators' => $defaults['diff_indicators'],
+        ],
+    ]]);
+
+    $changed = renderBlocks([[
+        'type' => 'code',
+        'data' => [
+            'language' => 'php',
+            'text' => 'echo 1;',
+            'line_numbers' => ! $defaults['line_numbers'],
+            'diff_indicators' => $defaults['diff_indicators'],
+        ],
+    ]]);
+
+    expect($untouched)->not->toContain('data-torchlight')
+        // A pošle se jen ta jedna, co se liší — ne obě.
+        ->and(html_entity_decode($changed))->toContain('"lineNumbers"')
+        ->and(html_entity_decode($changed))->not->toContain('"diffIndicators"');
+});
+
+it('spells the annotation the way the chosen language wants it', function () {
+    // Anotace musí být **skutečný komentář** jazyka bloku, jinak se nezpracuje
+    // a zůstane v ukázce viset jako text — a autor to zjistí až na hotové
+    // stránce. Nápověda, která ukáže obecný tvar, ho tam pošle.
+    expect(CodeComment::annotation('json', '[tl! focus]'))->toBe('// [tl! focus]')
+        ->and(CodeComment::annotation('bash', '[tl! focus]'))->toBe('# [tl! focus]')
+        ->and(CodeComment::annotation('html', '[tl! focus]'))->toBe('<!-- [tl! focus] -->')
+        ->and(CodeComment::annotation('sql', '[tl! focus]'))->toBe('-- [tl! focus]')
+        ->and(CodeComment::annotation('css', '[tl! focus]'))->toBe('/* [tl! focus] */')
+        // Prostý text bere zvýrazňovač celý jako komentář, takže značka navíc
+        // by v ukázce zůstala vidět.
+        ->and(CodeComment::annotation('text', '[tl! focus]'))->toBe('[tl! focus]')
+        ->and(CodeComment::annotation(null, '[tl! focus]'))->toBe('[tl! focus]');
 });

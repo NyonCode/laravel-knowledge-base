@@ -27,6 +27,7 @@ use NyonCode\KnowledgeBase\Support\Cast;
 use NyonCode\KnowledgeBase\Support\Layouts;
 use NyonCode\KnowledgeBase\Support\Routes;
 use NyonCode\KnowledgeBase\Support\Settings;
+use Throwable;
 
 /**
  * Write an article.
@@ -87,6 +88,15 @@ class ArticleEditor extends Component
 
     public bool $preview = false;
 
+    /**
+     * Poslední uložení proběhlo — a je to vidět.
+     *
+     * Tlačítko, po kterém se na obrazovce nic nezmění, si člověk vyloží jako
+     * „nefunguje" a zkusí to znovu. Uložení samo o sobě nic viditelného
+     * nedělá: obsah zůstane, kde byl.
+     */
+    public bool $justSaved = false;
+
     /** Otevřený výběr typu bloku. */
     public bool $blockPicker = false;
 
@@ -133,6 +143,7 @@ class ArticleEditor extends Component
         if ($this->format()->isStructured()) {
             $this->blockData = self::toEditing($this->body);
         }
+
     }
 
     /**
@@ -150,6 +161,10 @@ class ArticleEditor extends Component
 
     public function save(KnowledgeBase $kb): void
     {
+        // Zprávu o minulém uložení zahodit hned: kdyby zůstala viset, uložení,
+        // které spadne na validaci, by vedle chyby tvrdilo „Uloženo".
+        $this->justSaved = false;
+
         // Blokový editor drží rozepsaný obsah v `blockData`; `body` je tvar,
         // který se ukládá. Bez převedení by se uložilo to, co v `body` leželo
         // předtím — u nového článku prázdno (a validace to zamítne jako
@@ -180,8 +195,46 @@ class ArticleEditor extends Component
 
         $this->article = $article;
         $this->note = '';
+        $this->justSaved = true;
 
         $this->dispatch('kb-article-saved', id: $article->getKey());
+
+        // Uložit znamená „hotovo", takže se jde zpátky na seznam: editor je
+        // formulář, ne pracovní plocha, na které se zůstává. Zároveň to řeší
+        // nový článek, který se psal na adrese „nový" — ta po uložení lže a
+        // obnovení stránky by otevřelo prázdný editor.
+        //
+        // Potvrzení jede s sebou přes flash, aby ho seznam měl co ukázat.
+        // Když si host seznam nemountuje, zůstává se tady a mluví odznak
+        // v hlavičce — přesměrování na `#` by editor jen rozbilo.
+        $url = Routes::adminIndex();
+
+        if ($url !== '#') {
+            session()->flash('knowledge-base.saved', $article->title);
+
+            $this->redirect($url, navigate: true);
+        }
+    }
+
+    /**
+     * Uložit rozepsané a odejít.
+     *
+     * Stav je jinak výběr v postranním panelu — a člověk, který si jen odskočí
+     * od nedopsaného článku, nemá řešit, co v tom výběru zrovna stojí.
+     * Nabízí se jen dokud článek nevyšel: u zveřejněného by tohle tlačítko
+     * článek stáhlo z webu, což od „uložit" nikdo nečeká.
+     */
+    public function saveAsDraft(KnowledgeBase $kb): void
+    {
+        $this->status = ArticleStatus::Draft->value;
+
+        $this->save($kb);
+    }
+
+    /** Vyšel už článek ven? */
+    public function isPublished(): bool
+    {
+        return $this->article?->status === ArticleStatus::Published;
     }
 
     /**
@@ -329,6 +382,53 @@ class ArticleEditor extends Component
         }
 
         return $defaults;
+    }
+
+    /**
+     * Jeden blok vyrenderovaný nanečisto — živý náhled vedle jeho polí.
+     *
+     * Jde **toutéž cestou jako hotová stránka** (registr rendererů), ne
+     * zjednodušenou kopií. U bloku kódu je to celý smysl náhledu: zvýraznění,
+     * anotace (`[tl! ++]`, `[tl! focus]`) i volby bloku vyhodnocuje až
+     * zvýrazňovač na serveru, takže z textarey se výsledek odhadnout nedá a
+     * druhá, „přibližná" verze náhledu by lhala právě v tom, kvůli čemu se
+     * kouká.
+     *
+     * Cena je jedno vyhledání ve zvýrazňovači na blok a render. Zvýrazňovač si
+     * výsledek pamatuje podle otisku kódu, takže nezměněný blok nestojí nic;
+     * platí se jen za blok, který autor právě upravil — tedy přesně za ten,
+     * jehož výsledek chce vidět. Pole jsou proto `wire:model.blur`, ne `.live`:
+     * náhled se přepočítá po dopsání, ne po každé klávese.
+     *
+     * Prázdný blok náhled nemá: rámeček s ničím uvnitř jen zabírá místo.
+     */
+    public function previewFor(int $index): ?string
+    {
+        $row = $this->blockData[$index] ?? null;
+
+        if (! is_array($row) || ($row['type'] ?? null) !== 'code') {
+            return null;
+        }
+
+        if (trim(Cast::string($row['text'] ?? '')) === '') {
+            return null;
+        }
+
+        $blocks = json_decode(self::toCanonical([$row]), true);
+
+        if (! is_array($blocks) || $blocks === []) {
+            return null;
+        }
+
+        try {
+            return app(RendererRegistry::class)
+                ->render(ContentFormat::Blocks, $blocks);
+        } catch (Throwable) {
+            // Náhled je pohodlí, ne obsah. Zvýrazňovač volá cizí službu a ta
+            // umí být nedostupná i nenastavená; editor kvůli tomu spadnout
+            // nesmí — psát se musí dát dál i bez obrázku výsledku.
+            return null;
+        }
     }
 
     /**
@@ -510,6 +610,10 @@ class ArticleEditor extends Component
         if ($this->article !== null) {
             $kb->markReviewed($this->article);
             $this->article->refresh();
+
+            // Datum kontroly editor nikde neukazuje, takže bez potvrzení je
+            // tohle tlačítko stejně němé jako bylo „Uložit".
+            $this->justSaved = true;
         }
     }
 

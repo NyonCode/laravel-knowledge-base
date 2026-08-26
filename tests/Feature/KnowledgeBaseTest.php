@@ -835,3 +835,13 @@ it('never writes an ASCII quote inside an x-data attribute', function (string $v
 
     expect($body)->not->toContain('"');
 })->with(['rich-text.blade.php', 'blocks/_rich.blade.php']);
+
+it('wires no selection bubble into the TipTap surface', function (string $view) {
+    // Bublina nad výběrem je pryč — formátování má jen panel. Zbylý
+    // `bubble:` v options by hostitel tiše zahodil (`window.kbEditor` ho
+    // nezná) a zbylé `x-ref="bubble"` by viselo v DOM bez pluginu, který
+    // ho polohuje: obojí se pozná až v prohlížeči, proto hlídač tady.
+    $source = (string) file_get_contents(__DIR__.'/../../resources/views/editors/'.$view);
+
+    expect($source)->not->toContain('bubble');
+})->with(['rich-text.blade.php', 'blocks/_rich.blade.php']);
