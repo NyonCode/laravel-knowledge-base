@@ -1,0 +1,3 @@
+Sada `Unit` je v `phpunit.xml.dist` i v `tests/Pest.php`, takže adresář musí
+existovat i prázdný — Pest jinak skončí s kódem 2, ne s „nula testů".
+Git prázdný adresář neverzuje, proto tenhle soubor.
