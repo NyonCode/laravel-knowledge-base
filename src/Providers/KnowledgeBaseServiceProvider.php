@@ -48,7 +48,13 @@ final class KnowledgeBaseServiceProvider extends PackageServiceProvider implemen
         $packager
             ->name('knowledge-base')
             ->hasConfig()
+            // Migrace se **spouštějí z balíčku**, nepublikují se. Publikovaná
+            // kopie je druhý originál se stejným názvem souboru: aplikace ji
+            // odmigruje, balíček si svou verzi mezitím opraví a nikdo se to
+            // nedozví, protože `migrations` zná jen jméno. Kdo si tabulku
+            // potřebuje ohnout, přidá si vlastní migraci vedle.
             ->hasMigrations()
+            ->canLoadMigrations()
             ->hasViews()
             ->hasTranslations()
             ->hasRoutes()

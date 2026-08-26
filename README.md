@@ -71,10 +71,30 @@ revisions, and it outlives the next editor fashion. Pick another when the people
 writing will not write markdown — a real reason, and the only good one.
 
 TipTap ships as a shell, not a bundle. Bundling an editor would push a second
-copy of ProseMirror into apps that already have one, so you bundle it, expose
-`window.kbEditor(el, { content, onChange })` and flip
+copy of ProseMirror into apps that already have one, so the host builds it,
+exposes `window.kbEditor(el, { content, onChange })` and flips
 `editors.tiptap.bundled` to `true`. Until then the driver is not offered at all
 — an editor that renders an inert box is worse than one that is absent.
+
+You do not have to write that adapter. The package ships it as **source** in
+`resources/js/kb-editor.js` — every extension the editor's toolbar promises,
+already wired to the contract. Point your bundler at it and install the TipTap
+packages it imports; they stay your dependencies, at your version, which is the
+whole point of not shipping a bundle.
+
+```js
+// vite.config.js
+export default defineConfig({
+    // Vite resolves a symlinked path repository to its real location, where
+    // there is no node_modules to resolve @tiptap/* from.
+    resolve: { preserveSymlinks: true },
+    plugins: [laravel({
+        input: [
+            'vendor/nyoncode/laravel-knowledge-base/resources/js/kb-editor.js',
+        ],
+    })],
+});
+```
 
 Your own is one class:
 
