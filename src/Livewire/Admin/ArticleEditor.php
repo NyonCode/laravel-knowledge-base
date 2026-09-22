@@ -397,7 +397,8 @@ class ArticleEditor extends Component
      * Cena je jedno vyhledání ve zvýrazňovači na blok a render. Zvýrazňovač si
      * výsledek pamatuje podle otisku kódu, takže nezměněný blok nestojí nic;
      * platí se jen za blok, který autor právě upravil — tedy přesně za ten,
-     * jehož výsledek chce vidět. Pole jsou proto `wire:model.blur`, ne `.live`:
+     * jehož výsledek chce vidět. Pole jsou proto `wire:model.live.blur`, ne
+     * holé `.live` (v Livewire 4 samotné `.blur` na server nepošle nic):
      * náhled se přepočítá po dopsání, ne po každé klávese.
      *
      * Prázdný blok náhled nemá: rámeček s ničím uvnitř jen zabírá místo.

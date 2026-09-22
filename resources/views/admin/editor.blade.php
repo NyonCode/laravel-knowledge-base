@@ -15,7 +15,7 @@
         <div class="flex flex-wrap items-center justify-between gap-3">
             <input
                 type="text"
-                wire:model.blur="title"
+                wire:model.live.blur="title"
                 placeholder="{{ __('knowledge-base::kb.admin.new') }}"
                 class="min-w-0 flex-1 border-0 bg-transparent p-0 text-2xl font-semibold tracking-tight text-zinc-900 placeholder:text-zinc-300 focus:ring-0 dark:text-white"
             />
