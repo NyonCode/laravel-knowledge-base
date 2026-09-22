@@ -216,7 +216,7 @@
             @include('knowledge-base::editors._tiptap-toolbar', ['compact' => true, 'tools' => $tools])
         </div>
 
-        <textarea x-show="! ready" rows="3" wire:model.blur="{{ $statePath }}"
+        <textarea x-show="! ready" rows="3" wire:model.live.blur="{{ $statePath }}"
             class="w-full border-0 p-3 text-sm focus:ring-0 dark:bg-zinc-950 dark:text-zinc-100"></textarea>
 
         <div wire:ignore x-show="ready">
@@ -228,6 +228,6 @@
         </div>
     </div>
 @else
-    <textarea rows="3" wire:model.blur="{{ $statePath }}"
+    <textarea rows="3" wire:model.live.blur="{{ $statePath }}"
         class="w-full rounded-lg border border-zinc-200 p-3 text-sm dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"></textarea>
 @endif

@@ -216,7 +216,7 @@
     </div>
 
     {{-- Bez načteného bundle zůstane pole použitelné, jen bez formátování. --}}
-    <textarea x-show="! ready" rows="20" wire:model.blur="{{ $statePath }}"
+    <textarea x-show="! ready" rows="20" wire:model.live.blur="{{ $statePath }}"
         class="w-full border-0 p-4 font-mono text-sm focus:ring-0 dark:bg-zinc-900 dark:text-zinc-100"></textarea>
 
     {{-- Plovoucí prvky patří k ploše, ne pod `wire:ignore`: TipTap je
